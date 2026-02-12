@@ -1,0 +1,20 @@
+Package: rgbio
+Title: High-Performance GenBank I/O using 'gb-io'
+Version: 0.0.0.9000
+Authors@R: 
+    person("Richard", "Stöckl", , "richard.stoeckl@ur.de", role = c("aut", "cre"),
+           comment = c(ORCID = "0000-0002-0451-0652"))
+Description: Interfaces with the 'gb-io' Rust crate to provide fast reading and writing of GenBank files. Supports parsing of sequences, features, and metadata into R-friendly data structures.
+License: MIT + file LICENSE
+Encoding: UTF-8
+Roxygen: list(markdown = TRUE)
+RoxygenNote: 7.3.3
+Config/rextendr/version: 0.4.2
+SystemRequirements: Cargo (Rust's package manager), rustc >= 1.65.0, xz
+Depends: 
+    R (>= 4.2)
+Suggests: 
+    knitr,
+    rmarkdown,
+    testthat
+VignetteBuilder: knitr

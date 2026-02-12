@@ -1,0 +1,17 @@
+url: https://richardstoeckl.github.io/rgbio/
+
+template:
+  bootstrap: 5
+
+home:
+  title: rgbio
+  description: High-performance GenBank I/O using the gb-io Rust crate.
+
+development:
+  mode: auto
+
+reference:
+  - title: GenBank IO
+    contents:
+      - read_genbank
+      - write_genbank

@@ -1,0 +1,12 @@
+^\.vscode$
+^src/\.cargo$
+^src/rust/vendor$
+^src/rust/target$
+^src/Makevars$
+^src/Makevars\.win$
+^LICENSE\.md$
+^doc$
+^Meta$
+^_pkgdown\.yml$
+^docs$
+^\.github$
