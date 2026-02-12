@@ -25,13 +25,13 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - uses: r-lib/actions/setup-pandoc@v3
+      - uses: r-lib/actions/setup-pandoc@v2
 
-      - uses: r-lib/actions/setup-r@v3
+      - uses: r-lib/actions/setup-r@v2
         with:
           r-version: ${{ matrix.config.r }}
 
-      - uses: r-lib/actions/setup-r-dependencies@v3
+      - uses: r-lib/actions/setup-r-dependencies@v2
         with:
           extra-packages: any::rcmdcheck
           needs: check
@@ -44,7 +44,7 @@ jobs:
         with:
           workspaces: "src/rust -> target"
 
-      - uses: r-lib/actions/check-r-package@v3
+      - uses: r-lib/actions/check-r-package@v2
         with:
           args: "--no-manual"
           build_args: "--no-manual"
