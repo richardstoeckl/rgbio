@@ -53,4 +53,4 @@ jobs:
           upload-snapshots: true
           args: '--no-manual'
           build_args: '--no-manual'
-          error-on: 'error'
+          error-on: '"error"'
