@@ -22,8 +22,17 @@ knitr::opts_chunk$set(
 
 ## Installation
 
-You can install `rgbio` from GitHub, provided you have the Rust toolchain installed.
+The `rgbio` package is not available on CRAN (for now), because it depends on a Rust crate. 
+You can install it from the R-universe repository without having installed Rust or any Rust toolchain, as there are binary versions available for Windows, macOS, and Linux.
 
+```
+install.packages("rgbio", 
+                 repos = c("https://richardstoeckl.r-universe.dev", 
+                           "https://cloud.r-project.org"))
+```
+
+If there is no pre-built binary available for your system, or you want the latest development version, you can install `rgbio` from GitHub, provided you have the Rust toolchain installed.
+You can find information on how to install Rust at https://github.com/r-rust/hellorust.
 ```r
 # install.packages("remotes")
 remotes::install_github("richardstoeckl/rgbio")
