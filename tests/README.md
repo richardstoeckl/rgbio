@@ -68,6 +68,117 @@ tests/
 └── testthat.R                             # rgbio v0.1.0
 ```
 
+## Test Case Summary
+
+The package currently defines 74 `test_that(...)` cases. Short descriptions are listed below by test file.
+
+### `tests/testthat/test-biopython-compatibility.R`
+
+- Standard Biopython fixture files parse successfully.
+- Large genome fixture files parse successfully.
+- Protein GenBank sequence fixtures parse successfully.
+- Circular genome fixtures preserve circular metadata.
+- Fixtures with output references parse as expected.
+- Sequence-only fixtures produce stable multi-record output.
+- GenPept and assembly fixtures match fixture-specific expectations.
+- Unsupported TLS/TSA records return parser errors.
+- FASTA amino-acid input is rejected as non-GenBank.
+- Biopython compatibility fixtures roundtrip read/write consistently.
+
+### `tests/testthat/test-dump-comprehensive.R`
+
+- `write_gbk` writes one record and roundtrips on re-read.
+- `write_gbk` appends multiple records when `append = TRUE`.
+- `write_gbk` enforces append preconditions with exact errors.
+- `write_gbk` errors for invalid `file` argument values.
+- `write_gbk` errors for invalid `sequences` input.
+- `write_gbk` errors when `features` has invalid type.
+- `write_gbk` errors when feature tables are incomplete.
+- `write_gbk` errors when `metadata` has invalid type.
+- `write_gbk` enforces qualifier structure with exact messages.
+- `write_gbk` warns when non-default `line_width` is supplied.
+
+### `tests/testthat/test-edge-cases.R`
+
+- Blank-sequence GenBank fixtures are handled correctly.
+- Bad location wrapping fixtures are handled correctly.
+- Wrapped `DBSOURCE` fixtures are handled correctly.
+- Empty accession fixtures are handled correctly.
+- Empty feature-qualifier fixtures are handled correctly.
+- Empty version fixtures are handled correctly.
+- Extra keyword fixtures are handled correctly.
+- Invalid LOCUS spacing fixtures are handled correctly.
+- Invalid `misc_feature` fixtures are handled correctly.
+- Invalid `product` fixtures are handled correctly.
+- Negative location fixtures return meaningful errors.
+- Missing end-marker fixtures are handled correctly.
+- ORIGIN line issue fixtures are handled correctly.
+- Wrong sequence indentation fixtures are handled correctly.
+- Edge-case fixtures roundtrip correctly after writing.
+
+### `tests/testthat/test-fixture-coverage.R`
+
+- Every fixture file is referenced by at least one test source.
+
+### `tests/testthat/test-internals.R`
+
+- Legacy wrapper handles mismatched feature-column lengths.
+- Feature validation rejects invalid qualifier structures.
+- Date parsing accepts supported date formats.
+- Invalid location strings are rejected.
+- `write_gbk` fills missing metadata fields.
+- Sequence validation rejects empty sequence input.
+- Complex location expressions are accepted.
+- Sequence edge cases roundtrip correctly.
+
+### `tests/testthat/test-load-comprehensive.R`
+
+- `read_gbk` reads path input and returns tidy output.
+- `read_gbk` rejects connection-like inputs with exact errors.
+- `read_gbk` supports record selection by index and accession.
+- Compressed-file expectations are gated by runtime capability.
+- `read_gbk` errors on missing files with exact messages.
+- `read_gbk` errors on invalid input types.
+- `read_gbk` enforces records-selector contracts.
+- `read_gbk` enforces selecting at least one output component.
+- `read_gbk` propagates parser errors for malformed content.
+
+### `tests/testthat/test-location-parsing.R`
+
+- Location parser handles simple range syntax.
+- Location parser detects strand direction correctly.
+- Location parser handles complex location syntax.
+- Location parsing works on real GenBank records.
+- Location parser handles edge-case fixture locations.
+- Location parser handles large real feature collections.
+- Malformed location input is validated safely.
+
+### `tests/testthat/test-read-genbank.R`
+
+- `read_genbank` errors when the file is missing.
+- `read_genbank` errors when the file is empty.
+- `read_genbank` errors on malformed GenBank content.
+
+### `tests/testthat/test-real-data.R`
+
+- `sequence.gb` parses and roundtrips correctly.
+- FASTA + GFF3 inputs recreate `sequence.gb` output.
+
+### `tests/testthat/test-record-manipulation.R`
+
+- Record objects follow R copy-on-modify semantics.
+- Record objects support deep-copy behavior.
+- Record objects maintain structural integrity after edits.
+- Record identity semantics behave as expected.
+- Record objects support common modification workflows.
+
+### `tests/testthat/test-wrapper-compatibility.R`
+
+- `read_genbank` wrapper remains path-only.
+- `read_genbank` wrapper rejects non-path input with exact errors.
+- `write_genbank` wrapper writes legacy record input.
+- `write_genbank` wrapper enforces legacy validation messages.
+
 ## Test Data Licensing and Attribution
 
 ### Sources
