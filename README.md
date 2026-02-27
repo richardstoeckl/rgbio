@@ -22,7 +22,7 @@ install.packages("rgbio",
                            "https://cloud.r-project.org"))
 ```
 
-If there is no pre-built binary available for your system, or you want the latest development version, you can install `rgbio` from GitHub, provided you have the Rust toolchain installed.
+If there is no pre-built binary available for your system, or you want the current development snapshot, you can install `rgbio` from GitHub, provided you have the Rust toolchain installed.
 You can find information on how to install Rust at https://github.com/r-rust/hellorust.
 ```r
 # install.packages("remotes")
