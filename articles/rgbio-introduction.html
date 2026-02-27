@@ -20,7 +20,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">rgbio</a>
 
-    <small class="nav-text text-danger me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Unreleased version">0.0.0.9000</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Released version">0.2.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -72,9 +72,10 @@ and writing GenBank files. It is designed to be fast and
 memory-efficient while providing R-friendly data structures.</p>
 <p><strong>Important note:</strong> This package was written primarily
 by LLMs (“AI”) under my direction, but it uses the robust Rust
-<code>gb-io</code> crate and is tested against the NCBI example GenBank
-files. It is mostly a project to play around with agents and “AI-tools”,
-but should provide real value.</p>
+<code>gb-io</code> crate and is tested against ~50 diverse GenBank files
+with many edge cases. It is a project for me to play around with agentic
+coding, but provides real value as it is one of the only ways to write
+GenBank files in R.</p>
 </div>
 <div class="section level2">
 <h2 id="installation">Installation<a class="anchor" aria-label="anchor" href="#installation"></a>
@@ -105,13 +106,16 @@ find information on how to install Rust at <a href="https://github.com/r-rust/he
 <code class="sourceCode R"><span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va">rgbio</span><span class="op">)</span></span></code></pre></div>
 </div>
 <div class="section level3">
-<h3 id="writing-a-genbank-file">Writing a GenBank File<a class="anchor" aria-label="anchor" href="#writing-a-genbank-file"></a>
+<h3 id="writing-and-reading-tidy-workflow">Writing and Reading (Tidy Workflow)<a class="anchor" aria-label="anchor" href="#writing-and-reading-tidy-workflow"></a>
 </h3>
-<p>To write a GenBank file, you need three components: 1.
-<strong>Sequence</strong>: A DNA or RNA string. 2.
-<strong>Features</strong>: A <code>data.frame</code> describing
-annotations. 3. <strong>Metadata</strong>: A list of file-level
-attributes (definition, accession, etc.).</p>
+<p>To write a GenBank file in tidy mode, you typically provide: 1.
+<strong>Sequences</strong>: A named character vector (or
+<code>DNAStringSet</code>). 2. <strong>Features</strong>: A
+<code>data.frame</code> with columns <code>type</code>,
+<code>start</code>, <code>end</code>, <code>strand</code>,
+<code>qualifiers</code>. 3. <strong>Metadata</strong>: A list,
+<code>data.frame</code>, or <code>DataFrame</code> with record-level
+attributes.</p>
 <p>Let’s create a minimal example sequence.</p>
 <div class="sourceCode" id="cb4"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="co"># 1. The sequence</span></span>
@@ -131,8 +135,10 @@ attributes (definition, accession, etc.).</p>
 <span><span class="co"># 3. Features</span></span>
 <span><span class="co"># Note: 'qualifiers' must be a list column where each element is a named character vector.</span></span>
 <span><span class="va">features_df</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/data.frame.html" class="external-link">data.frame</a></span><span class="op">(</span></span>
-<span>  key <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"source"</span>, <span class="st">"gene"</span>, <span class="st">"CDS"</span><span class="op">)</span>,</span>
-<span>  location <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"1..14"</span>, <span class="st">"1..14"</span>, <span class="st">"1..14"</span><span class="op">)</span>,</span>
+<span>  type <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"source"</span>, <span class="st">"gene"</span>, <span class="st">"CDS"</span><span class="op">)</span>,</span>
+<span>  start <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">1L</span>, <span class="fl">1L</span>, <span class="fl">1L</span><span class="op">)</span>,</span>
+<span>  end <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">14L</span>, <span class="fl">14L</span>, <span class="fl">14L</span><span class="op">)</span>,</span>
+<span>  strand <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"+"</span>, <span class="st">"+"</span>, <span class="st">"+"</span><span class="op">)</span>,</span>
 <span>  stringsAsFactors <span class="op">=</span> <span class="cn">FALSE</span></span>
 <span><span class="op">)</span></span>
 <span></span>
@@ -144,69 +150,156 @@ attributes (definition, accession, etc.).</p>
 <span></span>
 <span><span class="co"># Preview features</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/print.html" class="external-link">print</a></span><span class="op">(</span><span class="va">features_df</span><span class="op">)</span></span>
-<span><span class="co">#&gt;      key location                              qualifiers</span></span>
-<span><span class="co">#&gt; 1 source    1..14         Synthetic Organism, genomic DNA</span></span>
-<span><span class="co">#&gt; 2   gene    1..14                             exampleGene</span></span>
-<span><span class="co">#&gt; 3    CDS    1..14 exampleGene, hypothetical protein, MRTS</span></span></code></pre></div>
+<span><span class="co">#&gt;     type start end strand                              qualifiers</span></span>
+<span><span class="co">#&gt; 1 source     1  14      +         Synthetic Organism, genomic DNA</span></span>
+<span><span class="co">#&gt; 2   gene     1  14      +                             exampleGene</span></span>
+<span><span class="co">#&gt; 3    CDS     1  14      + exampleGene, hypothetical protein, MRTS</span></span></code></pre></div>
 <p>Now, write it to a temporary file:</p>
 <div class="sourceCode" id="cb5"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">tmp_file</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/tempfile.html" class="external-link">tempfile</a></span><span class="op">(</span>fileext <span class="op">=</span> <span class="st">".gb"</span><span class="op">)</span></span>
-<span><span class="fu"><a href="../reference/write_genbank.html">write_genbank</a></span><span class="op">(</span><span class="va">tmp_file</span>, <span class="va">seq_dna</span>, <span class="va">features_df</span>, <span class="va">metadata</span><span class="op">)</span></span>
+<span><span class="fu"><a href="../reference/write_gbk.html">write_gbk</a></span><span class="op">(</span></span>
+<span>  file <span class="op">=</span> <span class="va">tmp_file</span>,</span>
+<span>  sequences <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span>EX0001 <span class="op">=</span> <span class="va">seq_dna</span><span class="op">)</span>,</span>
+<span>  features <span class="op">=</span> <span class="va">features_df</span>,</span>
+<span>  metadata <span class="op">=</span> <span class="va">metadata</span></span>
+<span><span class="op">)</span></span>
 <span><span class="co">#&gt; [1] TRUE</span></span></code></pre></div>
 </div>
 <div class="section level3">
-<h3 id="reading-a-genbank-file">Reading a GenBank File<a class="anchor" aria-label="anchor" href="#reading-a-genbank-file"></a>
+<h3 id="reading-back-in-tidy-format">Reading Back in Tidy Format<a class="anchor" aria-label="anchor" href="#reading-back-in-tidy-format"></a>
 </h3>
-<p>Reading is straightforward. <code>read_genbank</code> parses the file
-and returns a list of records.</p>
+<p>Reading is straightforward. <code>read_gbk</code> parses the file and
+can return tidy tables.</p>
 <div class="sourceCode" id="cb6"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="va">records</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/read_genbank.html">read_genbank</a></span><span class="op">(</span><span class="va">tmp_file</span><span class="op">)</span></span>
-<span></span>
-<span><span class="co"># We wrote only one record</span></span>
-<span><span class="fu"><a href="https://rdrr.io/r/base/length.html" class="external-link">length</a></span><span class="op">(</span><span class="va">records</span><span class="op">)</span></span>
-<span><span class="co">#&gt; [1] 1</span></span>
-<span></span>
-<span><span class="va">record</span> <span class="op">&lt;-</span> <span class="va">records</span><span class="op">[[</span><span class="fl">1</span><span class="op">]</span><span class="op">]</span></span></code></pre></div>
+<code class="sourceCode R"><span><span class="va">records</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/read_gbk.html">read_gbk</a></span><span class="op">(</span><span class="va">tmp_file</span>, format <span class="op">=</span> <span class="st">"tidy"</span><span class="op">)</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/base/names.html" class="external-link">names</a></span><span class="op">(</span><span class="va">records</span><span class="op">)</span></span>
+<span><span class="co">#&gt; [1] "sequences" "features"  "metadata"</span></span></code></pre></div>
 </div>
 <div class="section level3">
 <h3 id="inspecting-the-data">Inspecting the Data<a class="anchor" aria-label="anchor" href="#inspecting-the-data"></a>
 </h3>
-<p>The returned record has three components matching what we wrote.</p>
+<p>The returned object has three components matching what we wrote.</p>
 <p><strong>Metadata:</strong></p>
 <div class="sourceCode" id="cb7"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/utils/str.html" class="external-link">str</a></span><span class="op">(</span><span class="va">record</span><span class="op">$</span><span class="va">metadata</span><span class="op">)</span></span>
-<span><span class="co">#&gt; List of 12</span></span>
+<code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/utils/str.html" class="external-link">str</a></span><span class="op">(</span><span class="va">records</span><span class="op">$</span><span class="va">metadata</span><span class="op">)</span></span>
+<span><span class="co">#&gt; tibble [1 × 13] (S3: tbl_df/tbl/data.frame)</span></span>
+<span><span class="co">#&gt;  $ record_id    : chr "EX0001"</span></span>
 <span><span class="co">#&gt;  $ name         : chr "EX0001"</span></span>
 <span><span class="co">#&gt;  $ definition   : chr "Synthetic Example Sequence"</span></span>
 <span><span class="co">#&gt;  $ accession    : chr "EX0001"</span></span>
 <span><span class="co">#&gt;  $ version      : chr "1"</span></span>
-<span><span class="co">#&gt;  $ keywords     : chr(0) </span></span>
+<span><span class="co">#&gt;  $ keywords     :List of 1</span></span>
+<span><span class="co">#&gt;   ..$ : chr(0) </span></span>
 <span><span class="co">#&gt;  $ source       : chr ""</span></span>
 <span><span class="co">#&gt;  $ organism     : chr NA</span></span>
 <span><span class="co">#&gt;  $ molecule_type: chr "DNA"</span></span>
 <span><span class="co">#&gt;  $ topology     : chr "linear"</span></span>
 <span><span class="co">#&gt;  $ division     : chr "SYN"</span></span>
 <span><span class="co">#&gt;  $ date         : chr "01-JAN-2023"</span></span>
-<span><span class="co">#&gt;  $ references   : list()</span></span></code></pre></div>
+<span><span class="co">#&gt;  $ references   :List of 1</span></span>
+<span><span class="co">#&gt;   ..$ : list()</span></span></code></pre></div>
 <p><strong>Sequence:</strong></p>
 <div class="sourceCode" id="cb8"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="va">record</span><span class="op">$</span><span class="va">sequence</span></span>
+<code class="sourceCode R"><span><span class="va">records</span><span class="op">$</span><span class="va">sequences</span><span class="op">$</span><span class="va">sequence</span><span class="op">[[</span><span class="fl">1</span><span class="op">]</span><span class="op">]</span></span>
 <span><span class="co">#&gt; [1] "ATGCGTACGTTAGC"</span></span></code></pre></div>
 <p><strong>Features:</strong></p>
 <p>The features are returned as a tidy <code>data.frame</code>.</p>
 <div class="sourceCode" id="cb9"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/base/print.html" class="external-link">print</a></span><span class="op">(</span><span class="va">record</span><span class="op">$</span><span class="va">features</span><span class="op">)</span></span>
-<span><span class="co">#&gt;      key location   qualifiers</span></span>
-<span><span class="co">#&gt; 1 source    1..14 Syntheti....</span></span>
-<span><span class="co">#&gt; 2   gene    1..14  exampleGene</span></span>
-<span><span class="co">#&gt; 3    CDS    1..14 exampleG....</span></span></code></pre></div>
+<code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/base/print.html" class="external-link">print</a></span><span class="op">(</span><span class="va">records</span><span class="op">$</span><span class="va">features</span><span class="op">)</span></span>
+<span><span class="co">#&gt; <span style="color: #949494;"># A tibble: 3 × 6</span></span></span>
+<span><span class="co">#&gt;   record_id type   start   end strand qualifiers</span></span>
+<span><span class="co">#&gt;   <span style="color: #949494; font-style: italic;">&lt;chr&gt;</span>     <span style="color: #949494; font-style: italic;">&lt;chr&gt;</span>  <span style="color: #949494; font-style: italic;">&lt;int&gt;</span> <span style="color: #949494; font-style: italic;">&lt;int&gt;</span> <span style="color: #949494; font-style: italic;">&lt;chr&gt;</span>  <span style="color: #949494; font-style: italic;">&lt;I&lt;list&gt;&gt;</span> </span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;">1</span> EX0001    source     1    14 +      <span style="color: #949494;">&lt;chr [2]&gt;</span> </span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;">2</span> EX0001    gene       1    14 +      <span style="color: #949494;">&lt;chr [1]&gt;</span> </span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;">3</span> EX0001    CDS        1    14 +      <span style="color: #949494;">&lt;chr [3]&gt;</span></span></span></code></pre></div>
+</div>
+<div class="section level3">
+<h3 id="writing-and-reading-bioconductor-workflow">Writing and Reading (Bioconductor Workflow)<a class="anchor" aria-label="anchor" href="#writing-and-reading-bioconductor-workflow"></a>
+</h3>
+<p>You can also use Bioconductor-native classes for input and
+output.</p>
+<div class="sourceCode" id="cb10"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">seqs_bioc</span> <span class="op">&lt;-</span> <span class="fu">Biostrings</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/pkg/Biostrings/man/XStringSet-class.html" class="external-link">DNAStringSet</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span>EX0002 <span class="op">=</span> <span class="st">"ATGCGGTTAA"</span><span class="op">)</span><span class="op">)</span></span>
+<span></span>
+<span><span class="va">gr</span> <span class="op">&lt;-</span> <span class="fu">GenomicRanges</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/pkg/GenomicRanges/man/GRanges-class.html" class="external-link">GRanges</a></span><span class="op">(</span></span>
+<span>  seqnames <span class="op">=</span> <span class="st">"EX0002"</span>,</span>
+<span>  ranges <span class="op">=</span> <span class="fu">IRanges</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/pkg/IRanges/man/IRanges-constructor.html" class="external-link">IRanges</a></span><span class="op">(</span>start <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">1L</span>, <span class="fl">1L</span><span class="op">)</span>, end <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">10L</span>, <span class="fl">10L</span><span class="op">)</span><span class="op">)</span>,</span>
+<span>  strand <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"+"</span>, <span class="st">"+"</span><span class="op">)</span></span>
+<span><span class="op">)</span></span>
+<span><span class="fu">S4Vectors</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/pkg/S4Vectors/man/Vector-class.html" class="external-link">mcols</a></span><span class="op">(</span><span class="va">gr</span><span class="op">)</span><span class="op">$</span><span class="va">type</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"source"</span>, <span class="st">"gene"</span><span class="op">)</span></span>
+<span><span class="fu">S4Vectors</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/pkg/S4Vectors/man/Vector-class.html" class="external-link">mcols</a></span><span class="op">(</span><span class="va">gr</span><span class="op">)</span><span class="op">$</span><span class="va">qualifiers</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span></span>
+<span>  <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span>organism <span class="op">=</span> <span class="st">"Synthetic Organism"</span>, mol_type <span class="op">=</span> <span class="st">"genomic DNA"</span><span class="op">)</span>,</span>
+<span>  <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span>gene <span class="op">=</span> <span class="st">"exampleGene2"</span><span class="op">)</span></span>
+<span><span class="op">)</span></span>
+<span></span>
+<span><span class="va">meta_bioc</span> <span class="op">&lt;-</span> <span class="fu">S4Vectors</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/pkg/S4Vectors/man/DataFrame-class.html" class="external-link">DataFrame</a></span><span class="op">(</span></span>
+<span>  definition <span class="op">=</span> <span class="st">"Bioconductor input example"</span>,</span>
+<span>  accession <span class="op">=</span> <span class="st">"EX0002"</span>,</span>
+<span>  molecule_type <span class="op">=</span> <span class="st">"DNA"</span></span>
+<span><span class="op">)</span></span>
+<span></span>
+<span><span class="va">tmp_bioc</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/tempfile.html" class="external-link">tempfile</a></span><span class="op">(</span>fileext <span class="op">=</span> <span class="st">".gb"</span><span class="op">)</span></span>
+<span><span class="fu"><a href="../reference/write_gbk.html">write_gbk</a></span><span class="op">(</span></span>
+<span>  file <span class="op">=</span> <span class="va">tmp_bioc</span>,</span>
+<span>  sequences <span class="op">=</span> <span class="va">seqs_bioc</span>,</span>
+<span>  features <span class="op">=</span> <span class="va">gr</span>,</span>
+<span>  metadata <span class="op">=</span> <span class="va">meta_bioc</span></span>
+<span><span class="op">)</span></span>
+<span><span class="co">#&gt; [1] TRUE</span></span>
+<span></span>
+<span><span class="va">bioc_out</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/read_gbk.html">read_gbk</a></span><span class="op">(</span><span class="va">tmp_bioc</span>, format <span class="op">=</span> <span class="st">"bioconductor"</span><span class="op">)</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/base/class.html" class="external-link">class</a></span><span class="op">(</span><span class="va">bioc_out</span><span class="op">$</span><span class="va">sequences</span><span class="op">)</span></span>
+<span><span class="co">#&gt; [1] "DNAStringSet"</span></span>
+<span><span class="co">#&gt; attr(,"package")</span></span>
+<span><span class="co">#&gt; [1] "Biostrings"</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/base/class.html" class="external-link">class</a></span><span class="op">(</span><span class="va">bioc_out</span><span class="op">$</span><span class="va">features</span><span class="op">)</span></span>
+<span><span class="co">#&gt; [1] "GRanges"</span></span>
+<span><span class="co">#&gt; attr(,"package")</span></span>
+<span><span class="co">#&gt; [1] "GenomicRanges"</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/base/class.html" class="external-link">class</a></span><span class="op">(</span><span class="va">bioc_out</span><span class="op">$</span><span class="va">metadata</span><span class="op">)</span></span>
+<span><span class="co">#&gt; [1] "DFrame"</span></span>
+<span><span class="co">#&gt; attr(,"package")</span></span>
+<span><span class="co">#&gt; [1] "S4Vectors"</span></span></code></pre></div>
+</div>
+<div class="section level3">
+<h3 id="minimum-required-information-for-write_gbk">Minimum Required Information for <code>write_gbk()</code><a class="anchor" aria-label="anchor" href="#minimum-required-information-for-write_gbk"></a>
+</h3>
+<p>Absolute minimum required inputs:</p>
+<ul>
+<li>
+<code>file</code>: output file path.</li>
+<li>
+<code>sequences</code>: non-empty named character vector or
+<code>DNAStringSet</code> with non-empty sequence strings.</li>
+</ul>
+<p>Everything else is optional:</p>
+<ul>
+<li>
+<code>features</code>: optional (<code>NULL</code> is valid).</li>
+<li>
+<code>metadata</code>: optional (<code>NULL</code> is valid).</li>
+</ul>
+<p>If omitted, <code>rgbio</code> fills required record-level fields
+using sequence names:</p>
+<ul>
+<li>
+<code>name</code>, <code>definition</code>, <code>accession</code>
+default to the record name.</li>
+<li>
+<code>molecule_type</code> defaults to <code>"DNA"</code>.</li>
+</ul>
+<p>Practical note:</p>
+<ul>
+<li>
+<code>append = TRUE</code> requires that <code>file</code> already
+exists and is a valid GenBank file.</li>
+</ul>
 </div>
 <div class="section level3">
 <h3 id="supported-metadata-fields">Supported Metadata Fields<a class="anchor" aria-label="anchor" href="#supported-metadata-fields"></a>
 </h3>
 <p>The following metadata fields are supported by
-<code><a href="../reference/write_genbank.html">write_genbank()</a></code> and returned by
-<code><a href="../reference/read_genbank.html">read_genbank()</a></code>:</p>
+<code><a href="../reference/write_gbk.html">write_gbk()</a></code> and returned by <code><a href="../reference/read_gbk.html">read_gbk()</a></code>:</p>
 <ul>
 <li>
 <code>name</code> (Locus name)</li>
@@ -235,13 +328,22 @@ include <code>description</code>, <code>authors</code>,
 <div class="section level2">
 <h2 id="advanced-complex-locations">Advanced: Complex Locations<a class="anchor" aria-label="anchor" href="#advanced-complex-locations"></a>
 </h2>
-<p><code>rgbio</code> supports complex GenBank locations, including
-joins, complements, and fuzziness, parsing them into standard location
-strings.</p>
-<p>For advanced manipulations of location strings or arithmetic, you may
-need to parse the <code>location</code> column further or rely on
-external Bioconductor packages. <code>rgbio</code> focuses on faithful
-IO.</p>
+<p>When reading GenBank files, <code>rgbio</code> preserves feature
+locations as GenBank location expressions produced by the parser,
+including patterns such as:</p>
+<ul>
+<li><code>join(1..10,20..30)</code></li>
+<li><code>complement(100..200)</code></li>
+<li>fuzzy bounds such as <code>&lt;5..&gt;120</code>
+</li>
+</ul>
+<p>In other words, <code>rgbio</code> focuses on <strong>faithful
+I/O</strong> of location syntax rather than fully symbolic location
+algebra.</p>
+<p>For advanced manipulations (interval arithmetic, set operations,
+transcript/CDS composition), use Bioconductor range tooling on the
+<code>GRanges</code> output or parse location strings with specialized
+utilities.</p>
 </div>
 <div class="section level2">
 <h2 id="performance">Performance<a class="anchor" aria-label="anchor" href="#performance"></a>

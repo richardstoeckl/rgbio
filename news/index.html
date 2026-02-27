@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">rgbio</a>
 
-    <small class="nav-text text-danger me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Unreleased version">0.0.0.9000</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Released version">0.2.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -36,12 +36,30 @@
     </div>
 
     <div class="section level2">
+<h2 class="pkg-version" data-toc-text="0.2.0" id="rgbio-020">rgbio 0.2.0<a class="anchor" aria-label="anchor" href="#rgbio-020"></a></h2>
+<ul><li>Initial full release</li>
+<li>Complete rewrite of high-level R functions
+<ul><li>Added new primary GenBank I/O API: <code><a href="../reference/read_gbk.html">read_gbk()</a></code> and <code><a href="../reference/write_gbk.html">write_gbk()</a></code>.</li>
+<li>Added <code>format = "tidy"</code> and <code>format = "bioconductor"</code> output modes for reading.</li>
+<li>Added selective read controls (<code>sequences</code>, <code>features</code>, <code>metadata</code>) and record selectors (<code>records</code>).</li>
+<li>Added write support for named character vectors and <code>DNAStringSet</code> sequence inputs.</li>
+<li>Added multi-record write orchestration and append-mode writing.</li>
+<li>Kept <code><a href="../reference/read_genbank.html">read_genbank()</a></code> and <code><a href="../reference/write_genbank.html">write_genbank()</a></code> as deprecated compatibility wrappers.</li>
+</ul></li>
+<li>Added more extensive testing with test files from gb-io.py, gb-io, and biopython</li>
+</ul></div>
+    <div class="section level2">
+<h2 class="pkg-version" data-toc-text="0.1.0" id="rgbio-010">rgbio 0.1.0<a class="anchor" aria-label="anchor" href="#rgbio-010"></a></h2>
+<ul><li>intermediate release for r-universe</li>
+</ul></div>
+    <div class="section level2">
 <h2 class="pkg-version" data-toc-text="0.0.0.9000" id="rgbio-0009000">rgbio 0.0.0.9000<a class="anchor" aria-label="anchor" href="#rgbio-0009000"></a></h2>
 <ul><li>Initial development version with read/write support for GenBank files.</li>
 <li>R bindings to the Rust <code>gb-io</code> crate via extendr.</li>
 <li>Test coverage includes NCBI example GenBank files.</li>
 </ul></div>
-  </main></div>
+  </main><aside class="col-md-3"><nav id="toc" aria-label="Table of contents"><h2>On this page</h2>
+    </nav></aside></div>
 
 
     <footer><div class="pkgdown-footer-left">

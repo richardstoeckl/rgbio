@@ -9,8 +9,9 @@ while providing R-friendly data structures.
 
 **Important note:** This package was written primarily by LLMs (“AI”)
 under my direction, but it uses the robust Rust `gb-io` crate and is
-tested against the NCBI example GenBank files. It is mostly a project to
-play around with agents and “AI-tools”, but should provide real value.
+tested against ~50 diverse GenBank files with many edge cases. It is a
+project for me to play around with agentic coding, but provides real
+value as it is one of the only ways to write GenBank files in R.
 
 ## Installation
 
@@ -41,12 +42,13 @@ remotes::install_github("richardstoeckl/rgbio")
 library(rgbio)
 ```
 
-### Writing a GenBank File
+### Writing and Reading (Tidy Workflow)
 
-To write a GenBank file, you need three components: 1. **Sequence**: A
-DNA or RNA string. 2. **Features**: A `data.frame` describing
-annotations. 3. **Metadata**: A list of file-level attributes
-(definition, accession, etc.).
+To write a GenBank file in tidy mode, you typically provide: 1.
+**Sequences**: A named character vector (or `DNAStringSet`). 2.
+**Features**: A `data.frame` with columns `type`, `start`, `end`,
+`strand`, `qualifiers`. 3. **Metadata**: A list, `data.frame`, or
+`DataFrame` with record-level attributes.
 
 Let’s create a minimal example sequence.
 
@@ -68,8 +70,10 @@ metadata <- list(
 # 3. Features
 # Note: 'qualifiers' must be a list column where each element is a named character vector.
 features_df <- data.frame(
-  key = c("source", "gene", "CDS"),
-  location = c("1..14", "1..14", "1..14"),
+  type = c("source", "gene", "CDS"),
+  start = c(1L, 1L, 1L),
+  end = c(14L, 14L, 14L),
+  strand = c("+", "+", "+"),
   stringsAsFactors = FALSE
 )
 
@@ -81,62 +85,66 @@ features_df$qualifiers <- list(
 
 # Preview features
 print(features_df)
-#>      key location                              qualifiers
-#> 1 source    1..14         Synthetic Organism, genomic DNA
-#> 2   gene    1..14                             exampleGene
-#> 3    CDS    1..14 exampleGene, hypothetical protein, MRTS
+#>     type start end strand                              qualifiers
+#> 1 source     1  14      +         Synthetic Organism, genomic DNA
+#> 2   gene     1  14      +                             exampleGene
+#> 3    CDS     1  14      + exampleGene, hypothetical protein, MRTS
 ```
 
 Now, write it to a temporary file:
 
 ``` r
 tmp_file <- tempfile(fileext = ".gb")
-write_genbank(tmp_file, seq_dna, features_df, metadata)
+write_gbk(
+  file = tmp_file,
+  sequences = c(EX0001 = seq_dna),
+  features = features_df,
+  metadata = metadata
+)
 #> [1] TRUE
 ```
 
-### Reading a GenBank File
+### Reading Back in Tidy Format
 
-Reading is straightforward. `read_genbank` parses the file and returns a
-list of records.
+Reading is straightforward. `read_gbk` parses the file and can return
+tidy tables.
 
 ``` r
-records <- read_genbank(tmp_file)
-
-# We wrote only one record
-length(records)
-#> [1] 1
-
-record <- records[[1]]
+records <- read_gbk(tmp_file, format = "tidy")
+names(records)
+#> [1] "sequences" "features"  "metadata"
 ```
 
 ### Inspecting the Data
 
-The returned record has three components matching what we wrote.
+The returned object has three components matching what we wrote.
 
 **Metadata:**
 
 ``` r
-str(record$metadata)
-#> List of 12
+str(records$metadata)
+#> tibble [1 × 13] (S3: tbl_df/tbl/data.frame)
+#>  $ record_id    : chr "EX0001"
 #>  $ name         : chr "EX0001"
 #>  $ definition   : chr "Synthetic Example Sequence"
 #>  $ accession    : chr "EX0001"
 #>  $ version      : chr "1"
-#>  $ keywords     : chr(0) 
+#>  $ keywords     :List of 1
+#>   ..$ : chr(0) 
 #>  $ source       : chr ""
 #>  $ organism     : chr NA
 #>  $ molecule_type: chr "DNA"
 #>  $ topology     : chr "linear"
 #>  $ division     : chr "SYN"
 #>  $ date         : chr "01-JAN-2023"
-#>  $ references   : list()
+#>  $ references   :List of 1
+#>   ..$ : list()
 ```
 
 **Sequence:**
 
 ``` r
-record$sequence
+records$sequences$sequence[[1]]
 #> [1] "ATGCGTACGTTAGC"
 ```
 
@@ -145,19 +153,93 @@ record$sequence
 The features are returned as a tidy `data.frame`.
 
 ``` r
-print(record$features)
-#>      key location   qualifiers
-#> 1 source    1..14 Syntheti....
-#> 2   gene    1..14  exampleGene
-#> 3    CDS    1..14 exampleG....
+print(records$features)
+#> # A tibble: 3 × 6
+#>   record_id type   start   end strand qualifiers
+#>   <chr>     <chr>  <int> <int> <chr>  <I<list>> 
+#> 1 EX0001    source     1    14 +      <chr [2]> 
+#> 2 EX0001    gene       1    14 +      <chr [1]> 
+#> 3 EX0001    CDS        1    14 +      <chr [3]>
 ```
+
+### Writing and Reading (Bioconductor Workflow)
+
+You can also use Bioconductor-native classes for input and output.
+
+``` r
+seqs_bioc <- Biostrings::DNAStringSet(c(EX0002 = "ATGCGGTTAA"))
+
+gr <- GenomicRanges::GRanges(
+  seqnames = "EX0002",
+  ranges = IRanges::IRanges(start = c(1L, 1L), end = c(10L, 10L)),
+  strand = c("+", "+")
+)
+S4Vectors::mcols(gr)$type <- c("source", "gene")
+S4Vectors::mcols(gr)$qualifiers <- list(
+  c(organism = "Synthetic Organism", mol_type = "genomic DNA"),
+  c(gene = "exampleGene2")
+)
+
+meta_bioc <- S4Vectors::DataFrame(
+  definition = "Bioconductor input example",
+  accession = "EX0002",
+  molecule_type = "DNA"
+)
+
+tmp_bioc <- tempfile(fileext = ".gb")
+write_gbk(
+  file = tmp_bioc,
+  sequences = seqs_bioc,
+  features = gr,
+  metadata = meta_bioc
+)
+#> [1] TRUE
+
+bioc_out <- read_gbk(tmp_bioc, format = "bioconductor")
+class(bioc_out$sequences)
+#> [1] "DNAStringSet"
+#> attr(,"package")
+#> [1] "Biostrings"
+class(bioc_out$features)
+#> [1] "GRanges"
+#> attr(,"package")
+#> [1] "GenomicRanges"
+class(bioc_out$metadata)
+#> [1] "DFrame"
+#> attr(,"package")
+#> [1] "S4Vectors"
+```
+
+### Minimum Required Information for `write_gbk()`
+
+Absolute minimum required inputs:
+
+- `file`: output file path.
+- `sequences`: non-empty named character vector or `DNAStringSet` with
+  non-empty sequence strings.
+
+Everything else is optional:
+
+- `features`: optional (`NULL` is valid).
+- `metadata`: optional (`NULL` is valid).
+
+If omitted, `rgbio` fills required record-level fields using sequence
+names:
+
+- `name`, `definition`, `accession` default to the record name.
+- `molecule_type` defaults to `"DNA"`.
+
+Practical note:
+
+- `append = TRUE` requires that `file` already exists and is a valid
+  GenBank file.
 
 ### Supported Metadata Fields
 
 The following metadata fields are supported by
-[`write_genbank()`](https://richardstoeckl.github.io/rgbio/reference/write_genbank.md)
+[`write_gbk()`](https://richardstoeckl.github.io/rgbio/reference/write_gbk.md)
 and returned by
-[`read_genbank()`](https://richardstoeckl.github.io/rgbio/reference/read_genbank.md):
+[`read_gbk()`](https://richardstoeckl.github.io/rgbio/reference/read_gbk.md):
 
 - `name` (Locus name)
 - `definition`
@@ -176,12 +258,20 @@ and returned by
 
 ## Advanced: Complex Locations
 
-`rgbio` supports complex GenBank locations, including joins,
-complements, and fuzziness, parsing them into standard location strings.
+When reading GenBank files, `rgbio` preserves feature locations as
+GenBank location expressions produced by the parser, including patterns
+such as:
 
-For advanced manipulations of location strings or arithmetic, you may
-need to parse the `location` column further or rely on external
-Bioconductor packages. `rgbio` focuses on faithful IO.
+- `join(1..10,20..30)`
+- `complement(100..200)`
+- fuzzy bounds such as `<5..>120`
+
+In other words, `rgbio` focuses on **faithful I/O** of location syntax
+rather than fully symbolic location algebra.
+
+For advanced manipulations (interval arithmetic, set operations,
+transcript/CDS composition), use Bioconductor range tooling on the
+`GRanges` output or parse location strings with specialized utilities.
 
 ## Performance
 
