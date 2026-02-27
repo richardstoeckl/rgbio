@@ -128,3 +128,65 @@ compare_files_strict <- function(path_a, path_b) {
   lines_b <- readLines(path_b)
   identical(lines_a, lines_b)
 }
+
+rgbio_fixture_path <- function(...) {
+  testthat::test_path("..", "data", ...)
+}
+
+rgbio_basic_fixture <- function(name) {
+  rgbio_fixture_path("basic", name)
+}
+
+rgbio_biopython_fixture <- function(name) {
+  rgbio_fixture_path("biopython", name)
+}
+
+rgbio_edge_fixture <- function(name) {
+  rgbio_fixture_path("edge_cases", name)
+}
+
+rgbio_require_fixture <- function(path) {
+  testthat::skip_if_not(file.exists(path), paste("Fixture not found:", path))
+}
+
+rgbio_read_wrapper <- function(file) {
+  suppressWarnings(read_genbank(file))
+}
+
+rgbio_write_wrapper <- function(file, sequence, features, metadata = list()) {
+  suppressWarnings(write_genbank(file, sequence, features, metadata))
+}
+
+rgbio_has_gz_support <- function(path) {
+  if (!file.exists(path)) {
+    return(FALSE)
+  }
+
+  ok <- tryCatch({
+    suppressWarnings(read_genbank(path))
+    TRUE
+  }, error = function(e) {
+    FALSE
+  })
+
+  isTRUE(ok)
+}
+
+rgbio_expected_messages <- list(
+  file_path_required = "'file' must be a non-empty character path.",
+  sequence_scalar_required = "'sequence' must be a non-empty character scalar.",
+  sequence_set_required = "'sequences' must be a DNAStringSet or named character vector.",
+  legacy_features_required = "Legacy 'features' must be a data.frame with key, location, qualifiers columns.",
+  features_type_required = "'features' must be NULL, GRanges, tibble, or data.frame.",
+  features_columns_required = "Feature table must contain columns: type, start, end, strand, qualifiers.",
+  metadata_type_required = "'metadata' must be NULL, DataFrame, data.frame, or list.",
+  qualifiers_list_required = "Features 'qualifiers' column must be a list.",
+  qualifier_named_character_required = "Each element of 'qualifiers' must be a named character vector.",
+  qualifier_names_required = "Each element of 'qualifiers' must have non-empty names.",
+  location_non_empty_required = "Each feature 'location' must be a non-empty character string.",
+  location_tokens_rejected = "Location string contains unsupported tokens.",
+  records_selector_required = "'records' must be NULL, integer vector, or character vector.",
+  nothing_selected = "At least one of 'sequences', 'features', or 'metadata' must be TRUE.",
+  append_requires_existing = "append = TRUE requires an existing GenBank file.",
+  append_requires_valid_gbk = "Cannot append: existing file is not a valid GenBank file."
+)

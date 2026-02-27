@@ -2,11 +2,11 @@ use extendr_api::prelude::*;
 use gb_io::reader::SeqReader;
 use gb_io::writer::SeqWriter;
 use gb_io::seq::{self, Seq, Source, Topology}; 
-use std::fs::File;
+use std::fs::{File, OpenOptions};
 use std::borrow::Cow;
 
 #[extendr]
-fn write_genbank_rs(path: &str, sequence: &str, features: Dataframe<Robj>, metadata: List) -> Robj {
+fn write_genbank_rs(path: &str, sequence: &str, features: Dataframe<Robj>, metadata: List, append: bool) -> Robj {
     // 1. Create Seq object
     let mut seq = Seq::empty();
     
@@ -139,9 +139,16 @@ fn write_genbank_rs(path: &str, sequence: &str, features: Dataframe<Robj>, metad
     }
 
     // Write file
-    let file = match File::create(path) {
-        Ok(f) => f,
-        Err(e) => return Robj::from(format!("Error creating file: {}", e))
+    let file = if append {
+        match OpenOptions::new().append(true).open(path) {
+            Ok(f) => f,
+            Err(e) => return Robj::from(format!("Error opening file for append: {}", e))
+        }
+    } else {
+        match File::create(path) {
+            Ok(f) => f,
+            Err(e) => return Robj::from(format!("Error creating file: {}", e))
+        }
     };
     let mut writer = SeqWriter::new(file);
     if let Err(e) = writer.write(&seq) {

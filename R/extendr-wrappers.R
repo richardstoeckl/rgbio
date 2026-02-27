@@ -12,7 +12,7 @@ NULL
 
 read_genbank_rs <- function(path) .Call(wrap__read_genbank_rs, path)
 
-write_genbank_rs <- function(path, sequence, features, metadata) .Call(wrap__write_genbank_rs, path, sequence, features, metadata)
+write_genbank_rs <- function(path, sequence, features, metadata, append) .Call(wrap__write_genbank_rs, path, sequence, features, metadata, append)
 
 
 # nolint end

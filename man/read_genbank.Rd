@@ -7,36 +7,11 @@
 read_genbank(file)
 }
 \arguments{
-\item{file}{Path to the GenBank file.}
+\item{file}{Path to a GenBank file.}
 }
 \value{
-A list of records, where each record contains:
-\item{metadata}{A list of metadata with supported fields:
-\itemize{
-\item \code{name} (Locus name)
-\item \code{definition}
-\item \code{accession}
-\item \code{version}
-\item \code{keywords} (character vector)
-\item \code{source}
-\item \code{organism}
-\item \code{molecule_type} (e.g., "DNA")
-\item \code{division}
-\item \code{topology} ("linear" or "circular")
-\item \code{date} (format: \code{DD-MON-YYYY})
-\item \code{references} (list of references; each reference may include
-\code{description}, \code{authors}, \code{consortium}, \code{title},
-\code{journal}, \code{pubmed}, \code{remark})
-}
-}
-\item{features}{A data frame of features (key, location, qualifiers)}
-\item{sequence}{The sequence as a string}
+Parsed records in legacy list format.
 }
 \description{
-Parses a GenBank file and returns a list of sequences, features, and metadata.
-}
-\examples{
-\dontrun{
-  records <- read_genbank("example.gb")
-}
+Deprecated compatibility wrapper for \code{read_gbk()}.
 }

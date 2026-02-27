@@ -13,5 +13,7 @@ development:
 reference:
   - title: GenBank IO
     contents:
+      - read_gbk
+      - write_gbk
       - read_genbank
       - write_genbank

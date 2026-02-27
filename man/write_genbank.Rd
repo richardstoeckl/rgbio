@@ -7,49 +7,17 @@
 write_genbank(file, sequence, features, metadata = list())
 }
 \arguments{
-\item{file}{Path to the output file.}
+\item{file}{Path to output file.}
 
-\item{sequence}{Character string containing the sequence (DNA/RNA).}
+\item{sequence}{Sequence string.}
 
-\item{features}{Data frame of features. Must contain columns:
-\itemize{
-\item \code{key}: Feature type (e.g., "CDS", "gene")
-\item \code{location}: Location string (e.g., "1..100")
-\item \code{qualifiers}: List column of named character vectors
-}}
+\item{features}{Feature table with columns key, location, qualifiers.}
 
-\item{metadata}{Named list of metadata (optional). Supported fields:
-\itemize{
-\item \code{name} (Locus Name)
-\item \code{definition}
-\item \code{accession}
-\item \code{version}
-\item \code{keywords} (character vector)
-\item \code{source}
-\item \code{organism}
-\item \code{molecule_type} (e.g., "DNA")
-\item \code{division}
-\item \code{topology} ("linear" or "circular")
-\item \code{date} (format: \code{DD-MON-YYYY})
-\item \code{references} (list of references; each reference may include
-\code{description}, \code{authors}, \code{consortium}, \code{title},
-\code{journal}, \code{pubmed}, \code{remark})
-}}
+\item{metadata}{Metadata list.}
 }
 \value{
 Logical TRUE on success.
 }
 \description{
-Writes sequences and features to a GenBank format file.
-}
-\examples{
-\dontrun{
-  meta <- list(definition = "Example Sequence", accession = "AB0001")
-  feats <- data.frame(
-    key = "source", 
-    location = "1..100", 
-    qualifiers = I(list(c(organism = "Homo sapiens")))
-  )
-  write_genbank("out.gb", "ATGC...", feats, meta)
-}
+Deprecated compatibility wrapper for \code{write_gbk()}.
 }

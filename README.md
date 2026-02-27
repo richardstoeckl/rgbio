@@ -7,7 +7,8 @@
 
 `rgbio` provides a high-performance interface to the Rust [gb-io](https://github.com/moshe/gb-io) crate for reading and writing GenBank files. It is designed to be fast and memory-efficient while providing R-friendly data structures.
 
-**Important note:** This package was written primarily by LLMs ("AI") under my direction, but it uses the robust Rust `gb-io` crate and is tested against the NCBI example GenBank files. It is mostly a project to play around with agents and "AI-tools", but should provide real value.
+**Important note:** This package was written primarily by LLMs ("AI") under my direction, but it uses the robust Rust `gb-io` crate and is tested against ~50 diverse GenBank files with many edge cases. 
+It is a project for me to play around with agentic coding, but provides real value as it is one of the only ways to write GenBank files in R.
 
 
 ## Installation
@@ -46,8 +47,10 @@ metadata <- list(
 )
 
 features_df <- data.frame(
-  key = c("source", "gene", "CDS"),
-  location = c("1..14", "1..14", "1..14"),
+  type = c("source", "gene", "CDS"),
+  start = c(1L, 1L, 1L),
+  end = c(14L, 14L, 14L),
+  strand = c("+", "+", "+"),
   stringsAsFactors = FALSE
 )
 
@@ -58,10 +61,68 @@ features_df$qualifiers <- list(
 )
 
 tmp_file <- tempfile(fileext = ".gb")
-write_genbank(tmp_file, seq_dna, features_df, metadata)
+write_gbk(
+  file = tmp_file,
+  sequences = c(EX0001 = seq_dna),
+  features = features_df,
+  metadata = metadata
+)
 
-records <- read_genbank(tmp_file)
-str(records[[1]])
+records <- read_gbk(tmp_file, format = "tidy")
+str(records)
+```
+
+## What Is Required vs Optional for `write_gbk()`
+
+Minimum required inputs:
+
+- `file`: output file path
+- `sequences`: non-empty named character vector or `DNAStringSet`
+
+Optional inputs:
+
+- `features = NULL`
+- `metadata = NULL`
+- `append = FALSE`
+- `validate = TRUE`
+- `line_width = 80`
+
+If `metadata` is omitted, `rgbio` fills defaults per record:
+
+- `name`, `definition`, `accession` from the sequence name
+- `molecule_type = "DNA"`
+
+`append = TRUE` requires that the target file already exists and is a valid GenBank file.
+
+## Minimal Tidy Example
+
+```r
+library(rgbio)
+
+out <- tempfile(fileext = ".gb")
+
+write_gbk(
+  file = out,
+  sequences = c(min1 = "ATGC")
+)
+
+read_gbk(out, format = "tidy")
+```
+
+## Minimal Bioconductor Example
+
+```r
+library(rgbio)
+
+out <- tempfile(fileext = ".gb")
+
+seqs <- Biostrings::DNAStringSet(c(min2 = "ATGCGG"))
+write_gbk(
+  file = out,
+  sequences = seqs
+)
+
+read_gbk(out, format = "bioconductor")
 ```
 
 ## Documentation

@@ -18,7 +18,8 @@ knitr::opts_chunk$set(
 
 `rgbio` provides a high-performance interface to the [gb-io](https://github.com/moshe/gb-io) Rust crate for reading and writing GenBank files. It is designed to be fast and memory-efficient while providing R-friendly data structures.
 
-**Important note:** This package was written primarily by LLMs ("AI") under my direction, but it uses the robust Rust `gb-io` crate and is tested against the NCBI example GenBank files. It is mostly a project to play around with agents and "AI-tools", but should provide real value.
+**Important note:** This package was written primarily by LLMs ("AI") under my direction, but it uses the robust Rust `gb-io` crate and is tested against ~50 diverse GenBank files with many edge cases. 
+It is a project for me to play around with agentic coding, but provides real value as it is one of the only ways to write GenBank files in R.
 
 ## Installation
 
@@ -46,12 +47,12 @@ remotes::install_github("richardstoeckl/rgbio")
 library(rgbio)
 ```
 
-### Writing a GenBank File
+### Writing and Reading (Tidy Workflow)
 
-To write a GenBank file, you need three components:
-1. **Sequence**: A DNA or RNA string.
-2. **Features**: A `data.frame` describing annotations.
-3. **Metadata**: A list of file-level attributes (definition, accession, etc.).
+To write a GenBank file in tidy mode, you typically provide:
+1. **Sequences**: A named character vector (or `DNAStringSet`).
+2. **Features**: A `data.frame` with columns `type`, `start`, `end`, `strand`, `qualifiers`.
+3. **Metadata**: A list, `data.frame`, or `DataFrame` with record-level attributes.
 
 Let's create a minimal example sequence.
 
@@ -73,8 +74,10 @@ metadata <- list(
 # 3. Features
 # Note: 'qualifiers' must be a list column where each element is a named character vector.
 features_df <- data.frame(
-  key = c("source", "gene", "CDS"),
-  location = c("1..14", "1..14", "1..14"),
+  type = c("source", "gene", "CDS"),
+  start = c(1L, 1L, 1L),
+  end = c(14L, 14L, 14L),
+  strand = c("+", "+", "+"),
   stringsAsFactors = FALSE
 )
 
@@ -92,36 +95,37 @@ Now, write it to a temporary file:
 
 ```{r write}
 tmp_file <- tempfile(fileext = ".gb")
-write_genbank(tmp_file, seq_dna, features_df, metadata)
+write_gbk(
+  file = tmp_file,
+  sequences = c(EX0001 = seq_dna),
+  features = features_df,
+  metadata = metadata
+)
 ```
 
-### Reading a GenBank File
+### Reading Back in Tidy Format
 
-Reading is straightforward. `read_genbank` parses the file and returns a list of records.
+Reading is straightforward. `read_gbk` parses the file and can return tidy tables.
 
 ```{r read}
-records <- read_genbank(tmp_file)
-
-# We wrote only one record
-length(records)
-
-record <- records[[1]]
+records <- read_gbk(tmp_file, format = "tidy")
+names(records)
 ```
 
 ### Inspecting the Data
 
-The returned record has three components matching what we wrote.
+The returned object has three components matching what we wrote.
 
 **Metadata:**
 
 ```{r inspect-meta}
-str(record$metadata)
+str(records$metadata)
 ```
 
 **Sequence:**
 
 ```{r inspect-seq}
-record$sequence
+records$sequences$sequence[[1]]
 ```
 
 **Features:**
@@ -129,13 +133,72 @@ record$sequence
 The features are returned as a tidy `data.frame`.
 
 ```{r inspect-feat}
-print(record$features)
+print(records$features)
 ```
+
+### Writing and Reading (Bioconductor Workflow)
+
+You can also use Bioconductor-native classes for input and output.
+
+```{r bioc-workflow}
+seqs_bioc <- Biostrings::DNAStringSet(c(EX0002 = "ATGCGGTTAA"))
+
+gr <- GenomicRanges::GRanges(
+  seqnames = "EX0002",
+  ranges = IRanges::IRanges(start = c(1L, 1L), end = c(10L, 10L)),
+  strand = c("+", "+")
+)
+S4Vectors::mcols(gr)$type <- c("source", "gene")
+S4Vectors::mcols(gr)$qualifiers <- list(
+  c(organism = "Synthetic Organism", mol_type = "genomic DNA"),
+  c(gene = "exampleGene2")
+)
+
+meta_bioc <- S4Vectors::DataFrame(
+  definition = "Bioconductor input example",
+  accession = "EX0002",
+  molecule_type = "DNA"
+)
+
+tmp_bioc <- tempfile(fileext = ".gb")
+write_gbk(
+  file = tmp_bioc,
+  sequences = seqs_bioc,
+  features = gr,
+  metadata = meta_bioc
+)
+
+bioc_out <- read_gbk(tmp_bioc, format = "bioconductor")
+class(bioc_out$sequences)
+class(bioc_out$features)
+class(bioc_out$metadata)
+```
+
+### Minimum Required Information for `write_gbk()`
+
+Absolute minimum required inputs:
+
+- `file`: output file path.
+- `sequences`: non-empty named character vector or `DNAStringSet` with non-empty sequence strings.
+
+Everything else is optional:
+
+- `features`: optional (`NULL` is valid).
+- `metadata`: optional (`NULL` is valid).
+
+If omitted, `rgbio` fills required record-level fields using sequence names:
+
+- `name`, `definition`, `accession` default to the record name.
+- `molecule_type` defaults to `"DNA"`.
+
+Practical note:
+
+- `append = TRUE` requires that `file` already exists and is a valid GenBank file.
 
 ### Supported Metadata Fields
 
-The following metadata fields are supported by `write_genbank()` and returned by
-`read_genbank()`:
+The following metadata fields are supported by `write_gbk()` and returned by
+`read_gbk()`:
 
 - `name` (Locus name)
 - `definition`
@@ -153,9 +216,15 @@ The following metadata fields are supported by `write_genbank()` and returned by
 
 ## Advanced: Complex Locations
 
-`rgbio` supports complex GenBank locations, including joins, complements, and fuzziness, parsing them into standard location strings.
+When reading GenBank files, `rgbio` preserves feature locations as GenBank location expressions produced by the parser, including patterns such as:
 
-For advanced manipulations of location strings or arithmetic, you may need to parse the `location` column further or rely on external Bioconductor packages. `rgbio` focuses on faithful IO.
+- `join(1..10,20..30)`
+- `complement(100..200)`
+- fuzzy bounds such as `<5..>120`
+
+In other words, `rgbio` focuses on **faithful I/O** of location syntax rather than fully symbolic location algebra.
+
+For advanced manipulations (interval arithmetic, set operations, transcript/CDS composition), use Bioconductor range tooling on the `GRanges` output or parse location strings with specialized utilities.
 
 ## Performance
 
