@@ -1,14 +1,24 @@
 # rgbio
 
 <!-- badges: start -->
+
+[![Project Status: Active – The project has reached a stable, usable
+state and is being actively
+developed.](https://www.repostatus.org/badges/latest/active.svg)](https://www.repostatus.org/)
+[![rgbio status badge](https://richardstoeckl.r-universe.dev/rgbio/badges/version)](https://richardstoeckl.r-universe.dev/rgbio)
 [![R-CMD-check](https://github.com/richardstoeckl/rgbio/actions/workflows/R-CMD-check.yaml/badge.svg)](https://github.com/richardstoeckl/rgbio/actions/workflows/R-CMD-check.yaml)
 [![pkgdown](https://github.com/richardstoeckl/rgbio/actions/workflows/pkgdown.yaml/badge.svg)](https://github.com/richardstoeckl/rgbio/actions/workflows/pkgdown.yaml)
 <!-- badges: end -->
 
-`rgbio` provides a high-performance interface to the Rust [gb-io](https://github.com/moshe/gb-io) crate for reading and writing GenBank files. It is designed to be fast and memory-efficient while providing R-friendly data structures.
+`rgbio` provides performant reading and writing operations for GenBank (.gb/.gbk/.gbff) files in R via an interface to the high-performance [`gb-io`](https://github.com/moshe/gb-io) Rust crate. It is designed to be fast and memory-efficient while providing R-friendly data structures.
 
-**Important note:** This package was written primarily by LLMs ("AI") under my direction, but it uses the robust Rust `gb-io` crate and is tested against ~50 diverse GenBank files with many edge cases. 
-It is a project for me to play around with agentic coding, but provides real value as it is one of the only ways to write GenBank files in R.
+## Why `rgbio`?
+
+* the only way to directly **write** GenBank files from R *(to my knowledge)*
+* much faster **reading** of GenBank files *(~10x-20x faster than other packages in my benchmarks)*
+* reading into and writing from **both**: tidy objects (e.g. tibbles/data.frames) and "Bioconductor Sequence Infrastructure" objects (e.g. DNAStrings).
+* robust parsing via the robust [`gb-io`](https://github.com/moshe/gb-io) Rust crate
+* extensively tested on ~50 diverse GenBank files with many edge cases.
 
 
 ## Installation
@@ -29,51 +39,21 @@ You can find information on how to install Rust at https://github.com/r-rust/hel
 remotes::install_github("richardstoeckl/rgbio")
 ```
 
-## Basic Usage
+## Usage
 
+### Reading GenBank files
+Reading files is as simple as providing the path (and optionally chosing the output type):
 ```r
 library(rgbio)
 
-# Minimal example
-seq_dna <- "ATGCGTACGTTAGC"
-metadata <- list(
-  definition = "Synthetic Example Sequence",
-  accession = "EX0001",
-  version = "1",
-  molecule_type = "DNA",
-  topology = "linear",
-  division = "SYN",
-  date = "01-JAN-2023"
-)
+# to get an object with tidy dataframes
+tidy <- read_gbk("path/to/some.gbk", format = "tidy")
 
-features_df <- data.frame(
-  type = c("source", "gene", "CDS"),
-  start = c(1L, 1L, 1L),
-  end = c(14L, 14L, 14L),
-  strand = c("+", "+", "+"),
-  stringsAsFactors = FALSE
-)
-
-features_df$qualifiers <- list(
-  c(organism = "Synthetic Organism", mol_type = "genomic DNA"),
-  c(gene = "exampleGene"),
-  c(gene = "exampleGene", product = "hypothetical protein", translation = "MRTS")
-)
-
-tmp_file <- tempfile(fileext = ".gb")
-write_gbk(
-  file = tmp_file,
-  sequences = c(EX0001 = seq_dna),
-  features = features_df,
-  metadata = metadata
-)
-
-records <- read_gbk(tmp_file, format = "tidy")
-str(records)
+# to get an object with bioconductor sequence  infrastructure
+bioc <- read_gbk("path/to/some.gbk", format = "bioconductor")
 ```
 
-## What Is Required vs Optional for `write_gbk()`
-
+### Writing GenBank files
 Minimum required inputs:
 
 - `file`: output file path
@@ -94,7 +74,7 @@ If `metadata` is omitted, `rgbio` fills defaults per record:
 
 `append = TRUE` requires that the target file already exists and is a valid GenBank file.
 
-## Minimal Tidy Example
+#### Minimal Tidy Example
 
 ```r
 library(rgbio)
@@ -105,11 +85,9 @@ write_gbk(
   file = out,
   sequences = c(min1 = "ATGC")
 )
-
-read_gbk(out, format = "tidy")
 ```
 
-## Minimal Bioconductor Example
+#### Minimal Bioconductor Example
 
 ```r
 library(rgbio)
@@ -121,14 +99,33 @@ write_gbk(
   file = out,
   sequences = seqs
 )
-
-read_gbk(out, format = "bioconductor")
 ```
 
 ## Documentation
 
-The main vignette is available via:
+The main vignette is available [online](https://richardstoeckl.github.io/rgbio/articles/rgbio-introduction.html) or via:
 
 ```r
 vignette("rgbio-introduction")
 ```
+
+## Performance
+
+Performance comparison reading 17 real-world GenBank files:
+
+| Parser | Relative Speed | Median Time (ms) |
+|--------|------------------|----------------|
+|rgbio::read_gbk(format = 'tidy')         |28.8x            |             82.5|
+|rgbio::read_gbk(format = 'bioconductor') |23.9x            |             99.3|
+|geneviewer::read_gbk()                   |1.9x             |           1237.9|
+|genbankr::readGenBank()                  |baseline         |           2376.0|
+
+
+![Benchmark Result plot](vignettes/figure/performance-plot-1.png)
+
+*Full benchmark details and methodology available in the [benchmarks article](https://richardstoeckl.github.io/rgbio/articles/benchmarks.html).*
+
+
+## Disclaimer
+**Important note:** This was/is a project for me to play around with agentic coding, and was written primarily by LLMs ("AI") under my direction.
+Nevertheless, it provides real value as it is one of the only ways to write GenBank files in R, and is one of the most performant ways to read Genbank files to R. It uses the very robust Rust `gb-io` crate and is tested against ~50 diverse GenBank files with many edge cases.

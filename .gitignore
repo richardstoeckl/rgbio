@@ -8,3 +8,7 @@ inst/doc
 *.DS_Store
 .Rproj.user
 *.Rproj
+.DS_Store
+tests/.DS_Store
+vignettes/ncbi_dataset
+vignettes/*.Rds

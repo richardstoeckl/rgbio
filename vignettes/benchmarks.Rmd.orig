@@ -1,0 +1,226 @@
+---
+title: "Benchmarking rgbio Performance"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{Benchmarking rgbio Performance}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>",
+  fig.width = 8,
+  fig.height = 6
+)
+
+# knitr::knit("benchmarks.Rmd.orig", output = "benchmarks.Rmd")
+
+```
+
+# Benchmarking rgbio Performance
+
+## Benchmark Setup
+
+To evaluate real-world performance, we downloaded 17 archaeal type strain assemblies from the order "Methanococcales" directly from NCBI using the `datasets` command-line tool. These represent real-world GenBank files with varying sizes and complexity.
+
+```{r benchmarkdate, message=FALSE, warning=FALSE, echo=FALSE}
+cat(paste0("The Benchmark was run on ",Sys.Date()," using rgbio version ",sessionInfo()$otherPkgs$rgbio$Version))
+```
+
+### Data Download Command
+```bash
+# Download 17 archaeal type strain assemblies in GenBank format
+datasets download genome taxon "methanococcales" \
+  --from-type \
+  --reference \
+  --assembly-source RefSeq \
+  --include gbff \
+  --filename methanococcales_type_strains.zip --dehydrated && \
+  unzip methanococcales_type_strains.zip && \
+  datasets rehydrate --directory .
+```
+
+## Packages Tested
+
+We compared `rgbio` against three other popular GenBank reading packages:
+
+```{r setup, message=FALSE, warning=FALSE}
+library(bench)
+library(dplyr)
+library(ggplot2)
+
+# Packages being benchmarked
+library(rgbio)      # High-performance GenBank I/O using Rust gb-io crate
+library(read.gb)    # Specifically made for reading gb files  
+library(geneviewer) # Has a function to read gb files
+library(genbankr)   # Traditional Bioconductor GenBank reader. Only available up to Bioconductor version: 3.16 ≙ R version 4.2
+```
+
+- **rgbio**: Our Rust-powered package with two output formats (`tidy` and `bioconductor`)
+- **geneviewer**: A visualization-focused package with GenBank reading capabilities
+- **genbankr**: The traditional Bioconductor solution for GenBank parsing
+- **read.gb**: A dedicated GenBank file reader
+
+## Running the Benchmarks
+
+```{r benchmark-setup}
+# Set up test data paths
+gbk_dir <- "./ncbi_dataset/data"
+gbk_files <- list.files(gbk_dir, pattern = "\\.gbff$", recursive = TRUE, full.names = TRUE)
+
+# Define reader functions for consistent testing
+readers <- list(
+    "rgbio::read_gbk(format = 'tidy')" = function(file) {
+        tryCatch({
+            rgbio::read_gbk(file, format = "tidy")
+        }, error = function(e) {
+            message("rgbio (tidy) failed on ", file, ": ", e$message)
+            return(NULL)
+        })
+    },
+    "rgbio::read_gbk(format = 'bioconductor')" = function(file) {
+        tryCatch({
+            rgbio::read_gbk(file, format = "bioconductor")
+        }, error = function(e) {
+            message("rgbio (bioconductor) failed on ", file, ": ", e$message)
+            return(NULL)
+        })
+    },
+    "geneviewer::read_gbk()" = function(file) {
+        tryCatch({
+            geneviewer::read_gbk(file)
+        }, error = function(e) {
+            message("geneviewer failed on ", file, ": ", e$message)
+            return(NULL)
+        })
+    },
+    "genbankr::readGenBank()" = function(file) {
+        tryCatch({
+            genbankr::readGenBank(file)
+        }, error = function(e) {
+            message("genbankr failed on ", file, ": ", e$message)
+            return(NULL)
+        })
+    }
+)
+```
+
+We use the `bench` package to get accurate timing measurements, testing each parser on every file exactly once to simulate real-world usage patterns.
+
+```{r run-benchmarks, message=FALSE, warning=FALSE}
+# Run comprehensive benchmarks across all file × reader combinations
+benchmark_results <- press(
+    file = gbk_files,
+    reader = names(readers),
+    {
+        result <- bench::mark(
+            result = readers[[reader]](file),
+            iterations = 1,
+            check = FALSE
+        )
+    }
+)
+```
+
+## Processing Results
+
+```{r process-results}
+# Clean up results and add useful metadata
+benchmark_df <- benchmark_results %>%
+    mutate(
+        file_id = as.numeric(factor(file)),
+        file_name = dirname(file),
+        file_size_mb = file.info(file)$size / (1024^2),
+        success = !is.na(median),
+        time_ms = ifelse(success, as.numeric(median) * 1000, NA),
+        memory_mb = ifelse(success, as.numeric(gsub("[^0-9.]", "", mem_alloc)), NA)
+    ) %>%
+    select(reader, file_id, file_name, file_size_mb, success, time_ms, memory_mb)
+```
+```{r, include = FALSE}
+saveRDS(benchmark_df, file=paste0(Sys.Date(),"_rgbio_",sessionInfo()$otherPkgs$rgbio$Version,"_benchresults.Rds"))
+```
+
+
+## Results
+
+### Performance Visualization
+
+```{r performance-plot, fig.cap="Parsing time comparison across different GenBank readers. Lower values indicate better performance."}
+p1 <- ggplot(benchmark_df, aes(x = factor(reader, levels = names(readers)), y = time_ms, fill = reader)) +
+    geom_violin(alpha = 0.7) + 
+    geom_boxplot(width = 0.2, alpha = 0.8) +
+    scale_y_log10() + 
+    labs(
+        title = "Time Reading GenBank Files (lower is better)", 
+        y = "Time (ms, log scale)",
+        subtitle = paste("Based on", 
+                        benchmark_df %>% 
+                        filter(success) %>% 
+                        group_by(reader) %>% 
+                        summarise(n = n()) %>% 
+                        pull(n) %>% 
+                        min(), 
+                        "files per parser")
+    ) +
+    theme_minimal() +
+    theme(
+        axis.text.x = element_text(angle = 45, hjust = 1),
+        legend.position = "none"
+    ) +
+    xlab("Parsing function")
+
+p1
+```
+
+### Summary Statistics
+
+```{r summary-table}
+# Calculate performance summary with speedup factors
+summary_stats <- benchmark_df %>%
+    group_by(reader) %>%
+    summarise(
+        n_files = n(),
+        median_time_ms = round(median(time_ms, na.rm = TRUE), 1),
+        mean_time_ms = round(mean(time_ms, na.rm = TRUE), 1),
+        median_memory_mb = round(median(memory_mb, na.rm = TRUE), 1),
+        .groups = "drop"
+    ) %>%
+    arrange(factor(reader, levels = names(readers))) %>%
+    mutate(
+        max_time = max(median_time_ms),
+        speedup = case_when(
+            median_time_ms == max_time ~ "baseline",
+            TRUE ~ paste0(round(max_time / median_time_ms, 1), "x")
+        )
+    ) %>% 
+    select(reader, speedup, median_time_ms, mean_time_ms, median_memory_mb, n_files)
+
+knitr::kable(summary_stats, 
+             col.names = c("Parser", "Speed vs Slowest", "Median Time (ms)", 
+                          "Mean Time (ms)", "Median Memory (MB)", "Files Tested"),
+             caption = "Performance comparison summary")
+```
+
+## Key Findings
+
+The benchmarks reveal several important insights:
+
+1. **rgbio is significantly faster**: Both `rgbio` formats substantially outperform traditional R-based parsers
+2. **Consistent performance**: `rgbio` shows reliable performance across different file sizes and complexities  
+3. **Format flexibility**: The `tidy` format offers the best performance, while `bioconductor` format provides compatibility with existing workflows
+4. **Memory efficiency**: `rgbio` maintains competitive memory usage while delivering superior speed
+
+## Technical Details
+
+```{r session-info}
+sessionInfo()
+```
+
+## Conclusion
+
+These benchmarks demonstrate that `rgbio` provides substantial performance improvements for GenBank file parsing in R, making it an excellent choice for both interactive analysis and large-scale genomic data processing workflows. The Rust-powered backend delivers the speed improvements while maintaining the familiar R interface that researchers expect.
+
+For the most up-to-date benchmarks and methodology, visit the [rgbio GitHub repository](https://github.com/richardstoeckl/rgbio).

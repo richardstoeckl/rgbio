@@ -12,3 +12,6 @@
 ^\.github$
 ^.*\.Rproj$
 ^\.Rproj\.user$
+^vignettes/benchmarks\.Rmd\.orig$
+^scripts/
+^vignettes/ncbi_dataset/*
