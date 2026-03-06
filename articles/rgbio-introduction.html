@@ -33,7 +33,8 @@
 <li class="active nav-item dropdown">
   <button class="nav-link dropdown-toggle" type="button" id="dropdown-articles" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true">Articles</button>
   <ul class="dropdown-menu" aria-labelledby="dropdown-articles">
-<li><a class="dropdown-item" href="../articles/rgbio-introduction.html">Introduction to rgbio</a></li>
+<li><a class="dropdown-item" href="../articles/benchmarks.html">Benchmarking rgbio Performance</a></li>
+    <li><a class="dropdown-item" href="../articles/rgbio-introduction.html">Introduction to rgbio</a></li>
   </ul>
 </li>
 <li class="nav-item"><a class="nav-link" href="../news/index.html">Changelog</a></li>
@@ -67,15 +68,27 @@
 <div class="section level2">
 <h2 id="overview">Overview<a class="anchor" aria-label="anchor" href="#overview"></a>
 </h2>
-<p><code>rgbio</code> provides a high-performance interface to the <a href="https://github.com/moshe/gb-io" class="external-link">gb-io</a> Rust crate for reading
-and writing GenBank files. It is designed to be fast and
-memory-efficient while providing R-friendly data structures.</p>
-<p><strong>Important note:</strong> This package was written primarily
-by LLMs (“AI”) under my direction, but it uses the robust Rust
-<code>gb-io</code> crate and is tested against ~50 diverse GenBank files
-with many edge cases. It is a project for me to play around with agentic
-coding, but provides real value as it is one of the only ways to write
-GenBank files in R.</p>
+<p><code>rgbio</code> provides performant reading and writing operations
+for GenBank (.gb/.gbk/.gbff) files in R via an interface to the
+high-performance <a href="https://github.com/moshe/gb-io" class="external-link">gb-io</a> Rust
+crate. It is designed to be fast and memory-efficient while providing
+R-friendly data structures.</p>
+</div>
+<div class="section level2">
+<h2 id="why-rgbio">Why <code>rgbio</code>?<a class="anchor" aria-label="anchor" href="#why-rgbio"></a>
+</h2>
+<ul>
+<li>the only way to directly <em>write</em> GenBank files from R (to my
+knowledge)</li>
+<li>much faster <em>reading</em> of GenBank files (~10x-30x faster than
+other packages in my benchmarks)</li>
+<li>reading into and writing from both tidy objects
+(e.g. tibbles/data.frames) and “Bioconductor Sequence Infrastructure”
+objects (e.g. DNAStrings).</li>
+<li>robust parsing via the robust <a href="https://github.com/moshe/gb-io" class="external-link">gb-io</a> Rust crate</li>
+<li>extensively tested on ~50 diverse GenBank files with many edge
+cases.</li>
+</ul>
 </div>
 <div class="section level2">
 <h2 id="installation">Installation<a class="anchor" aria-label="anchor" href="#installation"></a>
@@ -350,11 +363,20 @@ utilities.</p>
 </h2>
 <p><code>rgbio</code> leverages Rust’s zero-copy parsing where possible
 and efficient string handling to outperform pure R implementations,
-especially for large multi-record GenBank files.</p>
+especially for large multi-record GenBank files. See the full benchmark
+details and methodology available in the <a href="https://richardstoeckl.github.io/rgbio/articles/benchmarks.html">benchmarks
+article</a>.</p>
 </div>
 <div class="section level2">
 <h2 id="disclaimer">Disclaimer<a class="anchor" aria-label="anchor" href="#disclaimer"></a>
 </h2>
+<p><strong>Important note:</strong> This was/is a project for me to play
+around with agentic coding, and was written primarily by LLMs (“AI”)
+under my direction. Nevertheless, it provides real value as it is one of
+the only ways to write GenBank files in R, and is one of the most
+performant ways to read Genbank files to R. It uses the very robust Rust
+<code>gb-io</code> crate and is tested against ~50 diverse GenBank files
+with many edge cases.</p>
 <p>This library is provided under the MIT License. The gb-io Rust crate
 package was written by David Leslie and is licensed under the terms of
 the MIT License.</p>

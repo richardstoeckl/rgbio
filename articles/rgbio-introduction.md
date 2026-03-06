@@ -2,16 +2,23 @@
 
 ## Overview
 
-`rgbio` provides a high-performance interface to the
-[gb-io](https://github.com/moshe/gb-io) Rust crate for reading and
-writing GenBank files. It is designed to be fast and memory-efficient
-while providing R-friendly data structures.
+`rgbio` provides performant reading and writing operations for GenBank
+(.gb/.gbk/.gbff) files in R via an interface to the high-performance
+[gb-io](https://github.com/moshe/gb-io) Rust crate. It is designed to be
+fast and memory-efficient while providing R-friendly data structures.
 
-**Important note:** This package was written primarily by LLMs (“AI”)
-under my direction, but it uses the robust Rust `gb-io` crate and is
-tested against ~50 diverse GenBank files with many edge cases. It is a
-project for me to play around with agentic coding, but provides real
-value as it is one of the only ways to write GenBank files in R.
+## Why `rgbio`?
+
+- the only way to directly *write* GenBank files from R (to my
+  knowledge)
+- much faster *reading* of GenBank files (~10x-30x faster than other
+  packages in my benchmarks)
+- reading into and writing from both tidy objects
+  (e.g. tibbles/data.frames) and “Bioconductor Sequence Infrastructure”
+  objects (e.g. DNAStrings).
+- robust parsing via the robust [gb-io](https://github.com/moshe/gb-io)
+  Rust crate
+- extensively tested on ~50 diverse GenBank files with many edge cases.
 
 ## Installation
 
@@ -277,9 +284,18 @@ transcript/CDS composition), use Bioconductor range tooling on the
 
 `rgbio` leverages Rust’s zero-copy parsing where possible and efficient
 string handling to outperform pure R implementations, especially for
-large multi-record GenBank files.
+large multi-record GenBank files. See the full benchmark details and
+methodology available in the [benchmarks
+article](https://richardstoeckl.github.io/rgbio/articles/benchmarks.html).
 
 ## Disclaimer
+
+**Important note:** This was/is a project for me to play around with
+agentic coding, and was written primarily by LLMs (“AI”) under my
+direction. Nevertheless, it provides real value as it is one of the only
+ways to write GenBank files in R, and is one of the most performant ways
+to read Genbank files to R. It uses the very robust Rust `gb-io` crate
+and is tested against ~50 diverse GenBank files with many edge cases.
 
 This library is provided under the MIT License. The gb-io Rust crate
 package was written by David Leslie and is licensed under the terms of
