@@ -122,10 +122,10 @@ Performance comparison reading 17 real-world GenBank files:
 
 | Parser                                   | Relative Speed | Median Time (ms) |
 |------------------------------------------|----------------|------------------|
-| rgbio::read_gbk(format = ‘tidy’)         | 28.8x          | 82.5             |
-| rgbio::read_gbk(format = ‘bioconductor’) | 23.9x          | 99.3             |
-| geneviewer::read_gbk()                   | 1.9x           | 1237.9           |
-| genbankr::readGenBank()                  | baseline       | 2376.0           |
+| rgbio::read_gbk(format = ‘tidy’)         | 17.6x          | 87.8             |
+| rgbio::read_gbk(format = ‘bioconductor’) | 16.3x          | 94.6             |
+| geneviewer::read_gbk()                   | 1.3x           | 1162.6           |
+| genbankr::readGenBank()                  | baseline       | 1545.1           |
 
 ![Benchmark Result plot](articles/figure/performance-plot-1.png)
 
