@@ -1,3 +1,11 @@
+# rgbio 0.3.0
+
+- Improved GenBank file read performance by ~25%:
+  - Improved feature location handling internals with vectorized validation and parsing paths.
+  - Reduced overhead in `read_gbk()` feature and sequence extraction by reusing vectorized intermediates.
+  - Updated write-path validation to validate location vectors in one pass for better performance and consistent errors.
+  - Expanded internal test coverage for vectorized location validation, including scalar/vector error parity checks.
+
 # rgbio 0.2.0
 - Initial full release
 - Complete rewrite of high-level R functions
