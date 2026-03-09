@@ -124,6 +124,85 @@ benchmark_results <- press(
 )
 ```
 
+To benchmark the writing, we pre-read each file once per `rgbio` format (without benchmarking), store those parsed objects, and then benchmark only the write step.
+
+```{r run-write-benchmarks, message=FALSE, warning=FALSE}
+# Pre-read objects once (no benchmarking) for each file × rgbio format
+write_cache_grid <- expand.grid(
+    file = gbk_files,
+    write_format = c("tidy", "bioconductor"),
+    stringsAsFactors = FALSE
+)
+
+write_cache_read_once <- function(file, write_format) {
+    tryCatch({
+        rgbio::read_gbk(file, format = write_format)
+    }, error = function(e) {
+        message("rgbio ", write_format, " pre-read failed on ", file, ": ", e$message)
+        return(NULL)
+    })
+}
+
+rgbio_cached_reads <- write_cache_grid %>%
+    rowwise() %>%
+    mutate(parsed_obj = list(write_cache_read_once(file, write_format))) %>%
+    ungroup()
+
+# Benchmark write phase only, reusing cached parsed objects
+write_benchmark_results <- press(
+    row_id = seq_len(nrow(rgbio_cached_reads)),
+    {
+        file <- rgbio_cached_reads$file[[row_id]]
+        write_format <- rgbio_cached_reads$write_format[[row_id]]
+        obj <- rgbio_cached_reads$parsed_obj[[row_id]]
+
+        result <- bench::mark(
+            result = {
+                tmp_file <- tempfile(pattern = "rgbio_write_benchmark_", fileext = ".gb")
+
+                tryCatch({
+                    if (is.null(obj)) {
+                        stop("cached read object is NULL")
+                    }
+
+                    if (write_format == "tidy") {
+                        seqs <- setNames(as.character(obj$sequences$sequence), obj$sequences$record_id)
+                        rgbio::write_gbk(
+                            file = tmp_file,
+                            sequences = seqs,
+                            features = obj$features,
+                            metadata = obj$metadata
+                        )
+                    } else {
+                        rgbio::write_gbk(
+                            file = tmp_file,
+                            sequences = obj$sequences,
+                            features = obj$features,
+                            metadata = obj$metadata
+                        )
+                    }
+                }, error = function(e) {
+                    message("rgbio ", write_format, " write failed on ", file, ": ", e$message)
+                    return(FALSE)
+                }, finally = {
+                    unlink(tmp_file)
+                })
+            },
+            iterations = 1,
+            check = FALSE
+        ) %>%
+            mutate(
+                file = file,
+                write_format = write_format,
+                operation = "write"
+            )
+    }
+)
+
+# Store write benchmark results for downstream processing
+write_results <- write_benchmark_results
+```
+
 ## Processing Results
 
 ```{r process-results}
@@ -138,9 +217,22 @@ benchmark_df <- benchmark_results %>%
         memory_mb = ifelse(success, as.numeric(gsub("[^0-9.]", "", mem_alloc)), NA)
     ) %>%
     select(reader, file_id, file_name, file_size_mb, success, time_ms, memory_mb)
+
+# Parse write benchmark results with matching metadata fields
+write_benchmark_df <- write_results %>%
+    mutate(
+        file_id = as.numeric(factor(file)),
+        file_name = dirname(file),
+        file_size_mb = file.info(file)$size / (1024^2),
+        success = !is.na(median),
+        time_ms = ifelse(success, as.numeric(median) * 1000, NA),
+        memory_mb = ifelse(success, as.numeric(gsub("[^0-9.]", "", mem_alloc)), NA)
+    ) %>%
+    select(write_format, operation, file_id, file_name, file_size_mb, success, time_ms, memory_mb)
 ```
 ```{r, include = FALSE}
 saveRDS(benchmark_df, file=paste0(Sys.Date(),"_rgbio_",sessionInfo()$otherPkgs$rgbio$Version,"_benchresults.Rds"))
+saveRDS(write_benchmark_df, file=paste0(Sys.Date(),"_rgbio_",sessionInfo()$otherPkgs$rgbio$Version,"_benchresults_write.Rds"))
 ```
 
 

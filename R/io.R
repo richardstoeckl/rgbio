@@ -1,13 +1,31 @@
+.rgbio_validate_location_vec <- function(loc_vec) {
+  if (!is.character(loc_vec)) {
+    stop("Each feature 'location' must be a non-empty character string.", call. = FALSE)
+  }
+  if (length(loc_vec) == 0) {
+    return(invisible(NULL))
+  }
+  if (anyNA(loc_vec) || any(!nzchar(loc_vec))) {
+    stop("Each feature 'location' must be a non-empty character string.", call. = FALSE)
+  }
+
+  loc_trim <- gsub("\\s+", "", loc_vec)
+  loc_no_keywords <- gsub("(?i)(complement|join|order|one-of)", "", loc_trim, perl = TRUE)
+  loc_no_allowed <- gsub("[0-9<>,.()^]", "", loc_no_keywords)
+
+  if (any(grepl("[A-Za-z]", loc_no_allowed))) {
+    stop("Location string contains unsupported tokens.", call. = FALSE)
+  }
+
+  invisible(NULL)
+}
+
 .rgbio_validate_location <- function(loc) {
   if (!is.character(loc) || length(loc) != 1 || is.na(loc) || !nzchar(loc)) {
     stop("Each feature 'location' must be a non-empty character string.", call. = FALSE)
   }
-  loc_trim <- gsub("\\s+", "", loc)
-  loc_no_keywords <- gsub("(?i)(complement|join|order|one-of)", "", loc_trim, perl = TRUE)
-  loc_no_allowed <- gsub("[0-9<>,.()^]", "", loc_no_keywords)
-  if (grepl("[A-Za-z]", loc_no_allowed)) {
-    stop("Location string contains unsupported tokens.", call. = FALSE)
-  }
+
+  .rgbio_validate_location_vec(loc)
 }
 
 .rgbio_ensure_qualifiers <- function(qualifiers) {
@@ -41,6 +59,44 @@
   }
 
   list(start = min(values), end = max(values), strand = strand)
+}
+
+.rgbio_parse_feature_location_vec <- function(locations) {
+  n <- length(locations)
+  if (n == 0) {
+    return(list(start = integer(0), end = integer(0), strand = character(0)))
+  }
+
+  safe_locations <- locations
+  safe_locations[is.na(safe_locations)] <- ""
+  empty_or_na <- !nzchar(safe_locations)
+
+  strand <- ifelse(grepl("complement", safe_locations, fixed = TRUE), "-", "+")
+  strand[empty_or_na] <- "*"
+
+  number_matches <- regmatches(safe_locations, gregexpr("[0-9]+", safe_locations))
+  start <- vapply(
+    number_matches,
+    function(vals) {
+      if (length(vals) == 0) return(NA_integer_)
+      nums <- as.integer(vals)
+      nums <- nums[!is.na(nums)]
+      if (length(nums) == 0) NA_integer_ else min(nums)
+    },
+    integer(1)
+  )
+  end <- vapply(
+    number_matches,
+    function(vals) {
+      if (length(vals) == 0) return(NA_integer_)
+      nums <- as.integer(vals)
+      nums <- nums[!is.na(nums)]
+      if (length(nums) == 0) NA_integer_ else max(nums)
+    },
+    integer(1)
+  )
+
+  list(start = start, end = end, strand = strand)
 }
 
 .rgbio_rust_records <- function(path) {
@@ -167,10 +223,11 @@
   output <- list()
 
   if (include_sequences) {
+    seq_vec <- vapply(records_raw, function(rec) rec$sequence, character(1))
     output$sequences <- tibble::tibble(
       record_id = record_ids,
-      sequence = vapply(records_raw, function(rec) rec$sequence, character(1)),
-      length = nchar(vapply(records_raw, function(rec) rec$sequence, character(1))),
+      sequence = seq_vec,
+      length = nchar(seq_vec),
       topology = vapply(
         records_raw,
         function(rec) {
@@ -190,13 +247,13 @@
         all_rows[[i]] <- NULL
         next
       }
-      parsed <- lapply(feat$location, .rgbio_parse_feature_location)
+      parsed <- .rgbio_parse_feature_location_vec(feat$location)
       all_rows[[i]] <- tibble::tibble(
         record_id = rep(record_ids[i], nrow(feat)),
         type = feat$key,
-        start = vapply(parsed, function(x) x$start, integer(1)),
-        end = vapply(parsed, function(x) x$end, integer(1)),
-        strand = vapply(parsed, function(x) x$strand, character(1)),
+        start = parsed$start,
+        end = parsed$end,
+        strand = parsed$strand,
         qualifiers = feat$qualifiers
       )
     }
@@ -277,11 +334,11 @@
       if (nrow(feat) == 0) {
         next
       }
-      parsed <- lapply(feat$location, .rgbio_parse_feature_location)
+      parsed <- .rgbio_parse_feature_location_vec(feat$location)
       seqnames <- c(seqnames, rep(record_ids[i], nrow(feat)))
-      starts <- c(starts, vapply(parsed, function(x) ifelse(is.na(x$start), 1L, x$start), integer(1)))
-      ends <- c(ends, vapply(parsed, function(x) ifelse(is.na(x$end), 1L, x$end), integer(1)))
-      strands <- c(strands, vapply(parsed, function(x) x$strand, character(1)))
+      starts <- c(starts, ifelse(is.na(parsed$start), 1L, parsed$start))
+      ends <- c(ends, ifelse(is.na(parsed$end), 1L, parsed$end))
+      strands <- c(strands, parsed$strand)
       types <- c(types, feat$key)
       qualifiers <- c(qualifiers, feat$qualifiers)
       locations <- c(locations, feat$location)
@@ -646,9 +703,7 @@ write_gbk <- function(
       }
       if (nrow(feature_norm) > 0) {
         .rgbio_ensure_qualifiers(feature_norm$qualifiers)
-        for (loc in feature_norm$location) {
-          .rgbio_validate_location(loc)
-        }
+        .rgbio_validate_location_vec(feature_norm$location)
       }
     }
 
@@ -702,9 +757,7 @@ write_genbank <- function(file, sequence, features, metadata = list()) {
     stop("'metadata' must be a list.", call. = FALSE)
   }
   .rgbio_ensure_qualifiers(features$qualifiers)
-  for (loc in features$location) {
-    .rgbio_validate_location(loc)
-  }
+  .rgbio_validate_location_vec(features$location)
 
   path <- normalizePath(file, mustWork = FALSE)
   res <- .rgbio_write_record(path, toupper(sequence), features, metadata, FALSE)

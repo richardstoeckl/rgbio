@@ -102,6 +102,67 @@ test_that("invalid locations are rejected", {
   )
 })
 
+test_that("vectorized location validator accepts mixed valid locations", {
+  validate_vec <- get(".rgbio_validate_location_vec", envir = asNamespace("rgbio"))
+
+  expect_no_error(validate_vec(c(
+    "1..4",
+    " join(1..2,3..4) ",
+    "complement(5..9)",
+    "order(1..5,10..20)",
+    "one-of(1888,1901)",
+    "<1..100",
+    ">200..300"
+  )))
+})
+
+test_that("vectorized location validator rejects NA and empty values", {
+  validate_vec <- get(".rgbio_validate_location_vec", envir = asNamespace("rgbio"))
+
+  expect_error(
+    validate_vec(c("1..4", NA_character_)),
+    fixed = TRUE,
+    rgbio_expected_messages$location_non_empty_required
+  )
+  expect_error(
+    validate_vec(c("1..4", "")),
+    fixed = TRUE,
+    rgbio_expected_messages$location_non_empty_required
+  )
+})
+
+test_that("vectorized location validator rejects unsupported tokens", {
+  validate_vec <- get(".rgbio_validate_location_vec", envir = asNamespace("rgbio"))
+
+  expect_error(
+    validate_vec(c("1..4", "join(1..x,2..3)")),
+    fixed = TRUE,
+    rgbio_expected_messages$location_tokens_rejected
+  )
+})
+
+test_that("vectorized location validator matches scalar error behavior", {
+  validate_vec <- get(".rgbio_validate_location_vec", envir = asNamespace("rgbio"))
+  validate_scalar <- get(".rgbio_validate_location", envir = asNamespace("rgbio"))
+
+  capture_error <- function(expr) {
+    tryCatch(
+      {
+        force(expr)
+        NULL
+      },
+      error = function(e) conditionMessage(e)
+    )
+  }
+
+  bad_values <- c(NA_character_, "", "1..x")
+  for (loc in bad_values) {
+    scalar_msg <- capture_error(validate_scalar(loc))
+    vec_msg <- capture_error(validate_vec(loc))
+    expect_identical(vec_msg, scalar_msg)
+  }
+})
+
 test_that("write_gbk fills missing metadata fields", {
   features <- data.frame(
     type = "source",
