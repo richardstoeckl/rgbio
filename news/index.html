@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">rgbio</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Released version">0.2.0</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Released version">0.3.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -36,6 +36,15 @@
 
     </div>
 
+    <div class="section level2">
+<h2 class="pkg-version" data-toc-text="0.3.0" id="rgbio-030">rgbio 0.3.0<a class="anchor" aria-label="anchor" href="#rgbio-030"></a></h2>
+<ul><li>Improved GenBank file read performance by ~25%:
+<ul><li>Improved feature location handling internals with vectorized validation and parsing paths.</li>
+<li>Reduced overhead in <code><a href="../reference/read_gbk.html">read_gbk()</a></code> feature and sequence extraction by reusing vectorized intermediates.</li>
+<li>Updated write-path validation to validate location vectors in one pass for better performance and consistent errors.</li>
+<li>Expanded internal test coverage for vectorized location validation, including scalar/vector error parity checks.</li>
+</ul></li>
+</ul></div>
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="0.2.0" id="rgbio-020">rgbio 0.2.0<a class="anchor" aria-label="anchor" href="#rgbio-020"></a></h2>
 <ul><li>Initial full release</li>

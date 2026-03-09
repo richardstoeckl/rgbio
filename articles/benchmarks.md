@@ -9,7 +9,7 @@ strain assemblies from the order “Methanococcales” directly from NCBI
 using the `datasets` command-line tool. These represent real-world
 GenBank files with varying sizes and complexity.
 
-    #> The Benchmark was run on 2026-03-06 using rgbio version 0.2.0
+    #> The Benchmark was run on 2026-03-09 using rgbio version 0.3.0
 
 #### Data Download Command
 
@@ -113,6 +113,87 @@ benchmark_results <- press(
 )
 ```
 
+To benchmark the writing, we pre-read each file once per `rgbio` format
+(without benchmarking), store those parsed objects, and then benchmark
+only the write step.
+
+``` r
+# Pre-read objects once (no benchmarking) for each file × rgbio format
+write_cache_grid <- expand.grid(
+    file = gbk_files,
+    write_format = c("tidy", "bioconductor"),
+    stringsAsFactors = FALSE
+)
+
+write_cache_read_once <- function(file, write_format) {
+    tryCatch({
+        rgbio::read_gbk(file, format = write_format)
+    }, error = function(e) {
+        message("rgbio ", write_format, " pre-read failed on ", file, ": ", e$message)
+        return(NULL)
+    })
+}
+
+rgbio_cached_reads <- write_cache_grid %>%
+    rowwise() %>%
+    mutate(parsed_obj = list(write_cache_read_once(file, write_format))) %>%
+    ungroup()
+
+# Benchmark write phase only, reusing cached parsed objects
+write_benchmark_results <- press(
+    row_id = seq_len(nrow(rgbio_cached_reads)),
+    {
+        file <- rgbio_cached_reads$file[[row_id]]
+        write_format <- rgbio_cached_reads$write_format[[row_id]]
+        obj <- rgbio_cached_reads$parsed_obj[[row_id]]
+
+        result <- bench::mark(
+            result = {
+                tmp_file <- tempfile(pattern = "rgbio_write_benchmark_", fileext = ".gb")
+
+                tryCatch({
+                    if (is.null(obj)) {
+                        stop("cached read object is NULL")
+                    }
+
+                    if (write_format == "tidy") {
+                        seqs <- setNames(as.character(obj$sequences$sequence), obj$sequences$record_id)
+                        rgbio::write_gbk(
+                            file = tmp_file,
+                            sequences = seqs,
+                            features = obj$features,
+                            metadata = obj$metadata
+                        )
+                    } else {
+                        rgbio::write_gbk(
+                            file = tmp_file,
+                            sequences = obj$sequences,
+                            features = obj$features,
+                            metadata = obj$metadata
+                        )
+                    }
+                }, error = function(e) {
+                    message("rgbio ", write_format, " write failed on ", file, ": ", e$message)
+                    return(FALSE)
+                }, finally = {
+                    unlink(tmp_file)
+                })
+            },
+            iterations = 1,
+            check = FALSE
+        ) %>%
+            mutate(
+                file = file,
+                write_format = write_format,
+                operation = "write"
+            )
+    }
+)
+
+# Store write benchmark results for downstream processing
+write_results <- write_benchmark_results
+```
+
 ### Processing Results
 
 ``` r
@@ -127,6 +208,18 @@ benchmark_df <- benchmark_results %>%
         memory_mb = ifelse(success, as.numeric(gsub("[^0-9.]", "", mem_alloc)), NA)
     ) %>%
     select(reader, file_id, file_name, file_size_mb, success, time_ms, memory_mb)
+
+# Parse write benchmark results with matching metadata fields
+write_benchmark_df <- write_results %>%
+    mutate(
+        file_id = as.numeric(factor(file)),
+        file_name = dirname(file),
+        file_size_mb = file.info(file)$size / (1024^2),
+        success = !is.na(median),
+        time_ms = ifelse(success, as.numeric(median) * 1000, NA),
+        memory_mb = ifelse(success, as.numeric(gsub("[^0-9.]", "", mem_alloc)), NA)
+    ) %>%
+    select(write_format, operation, file_id, file_name, file_size_mb, success, time_ms, memory_mb)
 ```
 
 ### Results
@@ -197,10 +290,10 @@ knitr::kable(summary_stats,
 
 | Parser                                   | Speed vs Slowest | Median Time (ms) | Mean Time (ms) | Median Memory (MB) | Files Tested |
 |:-----------------------------------------|:-----------------|-----------------:|---------------:|-------------------:|-------------:|
-| rgbio::read_gbk(format = ‘tidy’)         | 17.6x            |             87.8 |           87.6 |               31.2 |           17 |
-| rgbio::read_gbk(format = ‘bioconductor’) | 16.3x            |             94.6 |           94.9 |               29.3 |           17 |
-| geneviewer::read_gbk()                   | 1.3x             |           1162.6 |         1166.3 |                1.5 |           17 |
-| genbankr::readGenBank()                  | baseline         |           1545.1 |         1774.0 |               34.8 |           17 |
+| rgbio::read_gbk(format = ‘tidy’)         | 24.6x            |             64.5 |           64.0 |               31.6 |           17 |
+| rgbio::read_gbk(format = ‘bioconductor’) | 22.4x            |             70.8 |           70.5 |               33.5 |           17 |
+| geneviewer::read_gbk()                   | 1.3x             |           1193.6 |         1224.7 |                1.5 |           17 |
+| genbankr::readGenBank()                  | baseline         |           1583.6 |         1741.7 |               34.8 |           17 |
 
 Performance comparison summary
 
@@ -236,41 +329,42 @@ sessionInfo()
 #> [1] stats     graphics  grDevices utils     datasets  methods   base     
 #> 
 #> other attached packages:
-#> [1] genbankr_1.26.0   geneviewer_0.1.11 read.gb_2.2       rgbio_0.2.0       ggplot2_4.0.2    
+#> [1] genbankr_1.26.0   geneviewer_0.1.11 read.gb_2.2       rgbio_0.3.0       ggplot2_4.0.2    
 #> [6] dplyr_1.2.0       bench_1.1.4      
 #> 
 #> loaded via a namespace (and not attached):
-#>  [1] MatrixGenerics_1.10.0       Biobase_2.58.0              httr_1.4.8                 
-#>  [4] tidyr_1.3.1                 bit64_4.0.5                 jsonlite_2.0.0             
-#>  [7] S7_0.2.1                    stats4_4.2.3                BiocFileCache_2.6.1        
-#> [10] blob_1.3.0                  profmem_0.7.0               BSgenome_1.66.3            
-#> [13] Rsamtools_2.14.0            GenomeInfoDbData_1.2.9      yaml_2.3.12                
-#> [16] progress_1.2.3              lattice_0.20-45             pillar_1.11.1              
-#> [19] RSQLite_2.3.7               glue_1.8.0                  digest_0.6.39              
-#> [22] GenomicRanges_1.50.2        RColorBrewer_1.1-3          XVector_0.38.0             
-#> [25] Matrix_1.5-3                htmltools_0.5.9             XML_3.99-0.22              
-#> [28] pkgconfig_2.0.3             biomaRt_2.54.1              zlibbioc_1.44.0            
-#> [31] purrr_1.0.2                 scales_1.4.0                fontawesome_0.5.3          
-#> [34] BiocParallel_1.32.6         tibble_3.3.1                KEGGREST_1.38.0            
-#> [37] generics_0.1.4              farver_2.1.2                IRanges_2.32.0             
-#> [40] SummarizedExperiment_1.28.0 cachem_1.1.0                withr_3.0.2                
-#> [43] GenomicFeatures_1.50.4      BiocGenerics_0.44.0         cli_3.6.5                  
-#> [46] magrittr_2.0.4              crayon_1.5.3                memoise_2.0.1              
-#> [49] evaluate_1.0.5              xml2_1.3.6                  tools_4.2.3                
-#> [52] prettyunits_1.2.0           hms_1.1.4                   matrixStats_1.3.0          
-#> [55] BiocIO_1.8.0                lifecycle_1.0.5             stringr_1.6.0              
-#> [58] S4Vectors_0.36.2            DelayedArray_0.24.0         AnnotationDbi_1.60.2       
-#> [61] Biostrings_2.66.0           compiler_4.2.3              GenomeInfoDb_1.34.9        
-#> [64] rlang_1.1.7                 grid_4.2.3                  RCurl_1.98-1.14            
-#> [67] rstudioapi_0.18.0           VariantAnnotation_1.44.1    rjson_0.2.21               
-#> [70] rappdirs_0.3.4              htmlwidgets_1.6.4           bitops_1.0-7               
-#> [73] codetools_0.2-19            restfulr_0.0.15             gtable_0.3.6               
-#> [76] rentrez_1.2.4               DBI_1.3.0                   curl_7.0.0                 
-#> [79] R6_2.6.1                    GenomicAlignments_1.34.1    knitr_1.51                 
-#> [82] rtracklayer_1.58.0          utf8_1.2.6                  fastmap_1.2.0              
-#> [85] bit_4.0.5                   filelock_1.0.3              stringi_1.8.4              
-#> [88] parallel_4.2.3              vctrs_0.7.1                 png_0.1-8                  
-#> [91] dbplyr_2.5.2                tidyselect_1.2.1            xfun_0.56
+#>  [1] bitops_1.0-9                matrixStats_1.5.0           fontawesome_0.5.3          
+#>  [4] bit64_4.6.0-1               filelock_1.0.3              RColorBrewer_1.1-3         
+#>  [7] progress_1.2.3              httr_1.4.8                  GenomeInfoDb_1.34.9        
+#> [10] tools_4.2.3                 utf8_1.2.6                  R6_2.6.1                   
+#> [13] otel_0.2.0                  DBI_1.3.0                   BiocGenerics_0.44.0        
+#> [16] withr_3.0.2                 tidyselect_1.2.1            prettyunits_1.2.0          
+#> [19] bit_4.6.0                   curl_7.0.0                  compiler_4.2.3             
+#> [22] cli_3.6.5                   Biobase_2.58.0              xml2_1.5.2                 
+#> [25] DelayedArray_0.24.0         rtracklayer_1.58.0          scales_1.4.0               
+#> [28] S7_0.2.1                    rappdirs_0.3.4              stringr_1.6.0              
+#> [31] digest_0.6.39               Rsamtools_2.14.0            rentrez_1.2.4              
+#> [34] XVector_0.38.0              pkgconfig_2.0.3             htmltools_0.5.9            
+#> [37] MatrixGenerics_1.10.0       BSgenome_1.66.3             dbplyr_2.5.2               
+#> [40] fastmap_1.2.0               htmlwidgets_1.6.4           rlang_1.1.7                
+#> [43] rstudioapi_0.18.0           RSQLite_2.4.6               BiocIO_1.8.0               
+#> [46] farver_2.1.2                generics_0.1.4              jsonlite_2.0.0             
+#> [49] BiocParallel_1.32.6         VariantAnnotation_1.44.1    RCurl_1.98-1.17            
+#> [52] magrittr_2.0.4              GenomeInfoDbData_1.2.9      Matrix_1.5-3               
+#> [55] Rcpp_1.1.1                  S4Vectors_0.36.2            lifecycle_1.0.5            
+#> [58] stringi_1.8.7               yaml_2.3.12                 SummarizedExperiment_1.28.0
+#> [61] zlibbioc_1.44.0             BiocFileCache_2.6.1         grid_4.2.3                 
+#> [64] blob_1.3.0                  parallel_4.2.3              crayon_1.5.3               
+#> [67] profmem_0.7.0               lattice_0.22-9              Biostrings_2.66.0          
+#> [70] GenomicFeatures_1.50.4      hms_1.1.4                   KEGGREST_1.38.0            
+#> [73] knitr_1.51                  pillar_1.11.1               GenomicRanges_1.50.2       
+#> [76] rjson_0.2.23                codetools_0.2-20            biomaRt_2.54.1             
+#> [79] stats4_4.2.3                XML_3.99-0.22               glue_1.8.0                 
+#> [82] evaluate_1.0.5              png_0.1-8                   vctrs_0.7.1                
+#> [85] gtable_0.3.6                purrr_1.2.1                 tidyr_1.3.2                
+#> [88] cachem_1.1.0                xfun_0.56                   restfulr_0.0.16            
+#> [91] tibble_3.3.1                GenomicAlignments_1.34.1    AnnotationDbi_1.60.2       
+#> [94] memoise_2.0.1               IRanges_2.32.0
 ```
 
 ### Conclusion

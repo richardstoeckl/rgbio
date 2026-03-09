@@ -22,7 +22,7 @@
 
     <a class="navbar-brand me-2" href="index.html">rgbio</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Released version">0.2.0</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Released version">0.3.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -64,7 +64,7 @@
 <ul>
 <li>the only way to directly <strong>write</strong> GenBank files from R <em>(to my knowledge)</em>
 </li>
-<li>much faster <strong>reading</strong> of GenBank files <em>(~10x-20x faster than other packages in my benchmarks)</em>
+<li>much faster <strong>reading</strong> of GenBank files <em>(~15x-25x faster than other packages in my benchmarks)</em>
 </li>
 <li>reading into and writing from <strong>both</strong>: tidy objects (e.g. tibbles/data.frames) and “Bioconductor Sequence Infrastructure” objects (e.g. DNAStrings).</li>
 <li>robust parsing via the robust <a href="https://github.com/moshe/gb-io" class="external-link"><code>gb-io</code></a> Rust crate</li>
@@ -164,7 +164,7 @@
 <div class="section level2">
 <h2 id="performance">Performance<a class="anchor" aria-label="anchor" href="#performance"></a>
 </h2>
-<p>Performance comparison reading 17 real-world GenBank files:</p>
+<p>Performance comparison reading 17 real-world GenBank files (rgbio v0.3.0):</p>
 <table class="table">
 <colgroup>
 <col width="19%">
@@ -179,23 +179,23 @@
 <tbody>
 <tr class="odd">
 <td>rgbio::read_gbk(format = ‘tidy’)</td>
-<td>17.6x</td>
-<td>87.8</td>
+<td>24.6x</td>
+<td>64.5</td>
 </tr>
 <tr class="even">
 <td>rgbio::read_gbk(format = ‘bioconductor’)</td>
-<td>16.3x</td>
-<td>94.6</td>
+<td>22.4x</td>
+<td>70.8</td>
 </tr>
 <tr class="odd">
 <td>geneviewer::read_gbk()</td>
 <td>1.3x</td>
-<td>1162.6</td>
+<td>1193.6</td>
 </tr>
 <tr class="even">
 <td>genbankr::readGenBank()</td>
 <td>baseline</td>
-<td>1545.1</td>
+<td>1583.6</td>
 </tr>
 </tbody>
 </table>

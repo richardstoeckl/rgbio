@@ -9,7 +9,7 @@ be fast and memory-efficient while providing R-friendly data structures.
 
 - the only way to directly **write** GenBank files from R *(to my
   knowledge)*
-- much faster **reading** of GenBank files *(~10x-20x faster than other
+- much faster **reading** of GenBank files *(~15x-25x faster than other
   packages in my benchmarks)*
 - reading into and writing from **both**: tidy objects
   (e.g. tibbles/data.frames) and “Bioconductor Sequence Infrastructure”
@@ -118,14 +118,15 @@ vignette("rgbio-introduction")
 
 ## Performance
 
-Performance comparison reading 17 real-world GenBank files:
+Performance comparison reading 17 real-world GenBank files (rgbio
+v0.3.0):
 
 | Parser                                   | Relative Speed | Median Time (ms) |
 |------------------------------------------|----------------|------------------|
-| rgbio::read_gbk(format = ‘tidy’)         | 17.6x          | 87.8             |
-| rgbio::read_gbk(format = ‘bioconductor’) | 16.3x          | 94.6             |
-| geneviewer::read_gbk()                   | 1.3x           | 1162.6           |
-| genbankr::readGenBank()                  | baseline       | 1545.1           |
+| rgbio::read_gbk(format = ‘tidy’)         | 24.6x          | 64.5             |
+| rgbio::read_gbk(format = ‘bioconductor’) | 22.4x          | 70.8             |
+| geneviewer::read_gbk()                   | 1.3x           | 1193.6           |
+| genbankr::readGenBank()                  | baseline       | 1583.6           |
 
 ![Benchmark Result plot](articles/figure/performance-plot-1.png)
 
