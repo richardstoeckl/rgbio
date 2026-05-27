@@ -8,6 +8,7 @@ developed.](https://www.repostatus.org/badges/latest/active.svg)](https://www.re
 [![rgbio status badge](https://richardstoeckl.r-universe.dev/rgbio/badges/version)](https://richardstoeckl.r-universe.dev/rgbio)
 [![R-CMD-check](https://github.com/richardstoeckl/rgbio/actions/workflows/R-CMD-check.yaml/badge.svg)](https://github.com/richardstoeckl/rgbio/actions/workflows/R-CMD-check.yaml)
 [![pkgdown](https://github.com/richardstoeckl/rgbio/actions/workflows/pkgdown.yaml/badge.svg)](https://github.com/richardstoeckl/rgbio/actions/workflows/pkgdown.yaml)
+[![dependencies](https://img.shields.io/badge/dependencies-0/0-brightgreen?style=flat)](https://img.shields.io/badge/dependencies-0/0-brightgreen?style=flat)
 <!-- badges: end -->
 
 `rgbio` provides performant reading and writing operations for GenBank (.gb/.gbk/.gbff) files in R via an interface to the high-performance [`gb-io`](https://github.com/moshe/gb-io) Rust crate. It is designed to be fast and memory-efficient while providing R-friendly data structures.
@@ -15,10 +16,10 @@ developed.](https://www.repostatus.org/badges/latest/active.svg)](https://www.re
 ## Why `rgbio`?
 
 * the only way to directly **write** GenBank files from R *(to my knowledge)*
-* much faster **reading** of GenBank files *(~15x-25x faster than other packages in my benchmarks)*
+* much faster **reading** of GenBank files *(~25x-45x faster than other packages in my benchmarks)*
 * reading into and writing from **both**: tidy objects (e.g. tibbles/data.frames) and "Bioconductor Sequence Infrastructure" objects (e.g. DNAStrings).
 * robust parsing via the robust [`gb-io`](https://github.com/moshe/gb-io) Rust crate
-* extensively tested on ~50 diverse GenBank files with many edge cases.
+* extensively tested on ~50 diverse GenBank files with many edge cases (~700 tests).
 
 
 ## Installation
@@ -45,6 +46,9 @@ remotes::install_github("richardstoeckl/rgbio")
 Reading files is as simple as providing the path (and optionally chosing the output type):
 ```r
 library(rgbio)
+
+# to get an object in base format
+base <- read_gbk("path/to/some.gbk", format = "base")
 
 # to get an object with tidy dataframes
 tidy <- read_gbk("path/to/some.gbk", format = "tidy")
@@ -74,7 +78,7 @@ If `metadata` is omitted, `rgbio` fills defaults per record:
 
 `append = TRUE` requires that the target file already exists and is a valid GenBank file.
 
-#### Minimal Tidy Example
+#### Minimal Base/Tidy Example
 
 ```r
 library(rgbio)
@@ -111,14 +115,15 @@ vignette("rgbio-introduction")
 
 ## Performance
 
-Performance comparison reading 17 real-world GenBank files (rgbio v0.3.0):
+Performance comparison reading 17 real-world GenBank files (rgbio v0.4.0):
 
 | Parser | Relative Speed | Median Time (ms) |
 |--------|------------------|----------------|
-|rgbio::read_gbk(format = 'tidy')         |24.6x            |             64.5|
-|rgbio::read_gbk(format = 'bioconductor') |22.4x            |             70.8|
-|geneviewer::read_gbk()                   |1.3x             |           1193.6|
-|genbankr::readGenBank()                  |baseline         |           1583.6|
+|rgbio::read_gbk(format = 'tidy')         |45.3x            |             42.2|
+|rgbio::read_gbk(format = 'bioconductor') |38.2x            |             50.1|
+|rgbio::read_gbk(format = 'base')         |45.4x            |             42.1|
+|geneviewer::read_gbk()                   |1.5x             |           1261.0|
+|genbankr::readGenBank()                  |baseline         |           1912.1|
 
 
 ![Benchmark Result plot](vignettes/figure/performance-plot-1.png)

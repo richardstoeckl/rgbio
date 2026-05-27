@@ -17,7 +17,7 @@ read_gbk(
 \arguments{
 \item{file}{Character path to a GenBank file.}
 
-\item{format}{Output format. One of "bioconductor" or "tidy".}
+\item{format}{Output format. One of "bioconductor", "tidy", or "base".}
 
 \item{sequences}{Logical; include sequence data.}
 
@@ -35,5 +35,5 @@ single object or a named list with \code{sequences}, \code{features}, and/or \co
 }
 \description{
 Reads one or more GenBank records and returns selected components in either
-Bioconductor or tidy format.
+Bioconductor, tidy, or base format.
 }

@@ -88,6 +88,38 @@ readers <- list(
             return(NULL)
         })
     },
+    "rgbio::read_gbk(format = 'base')" = function(file) {
+        tryCatch({
+            rgbio::read_gbk(file, format = "base")
+        }, error = function(e) {
+            message("rgbio (base) failed on ", file, ": ", e$message)
+            return(NULL)
+        })
+    },
+    "rgbio::read_gbk(format = 'tidy', validate = FALSE)" = function(file) {
+        tryCatch({
+            rgbio::read_gbk(file, format = "tidy", validate = FALSE)
+        }, error = function(e) {
+            message("rgbio (tidy) failed on ", file, ": ", e$message)
+            return(NULL)
+        })
+    },
+    "rgbio::read_gbk(format = 'bioconductor', validate = FALSE)" = function(file) {
+        tryCatch({
+            rgbio::read_gbk(file, format = "bioconductor", validate = FALSE)
+        }, error = function(e) {
+            message("rgbio (bioconductor) failed on ", file, ": ", e$message)
+            return(NULL)
+        })
+    },
+    "rgbio::read_gbk(format = 'base', validate = FALSE)" = function(file) {
+        tryCatch({
+            rgbio::read_gbk(file, format = "base", validate = FALSE)
+        }, error = function(e) {
+            message("rgbio (base) failed on ", file, ": ", e$message)
+            return(NULL)
+        })
+    },
     "geneviewer::read_gbk()" = function(file) {
         tryCatch({
             geneviewer::read_gbk(file)

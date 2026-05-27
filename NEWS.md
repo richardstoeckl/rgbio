@@ -1,3 +1,10 @@
+# rgbio 0.4.0
+
+- Improved GenBank file read performance by ~25% compared to v0.3.0:
+  - Moved feature location parsing and validation to Rust for better performance and more consistent error handling.
+- Added dependency-free format: `format = "base"`.
+  - This means that `rgbio` can now be used without any additional dependencies if needed, though the `tidy` (requires `tibble`) and `bioconductor` (requires `Biostrings`, `S4Vectors`, `IRanges`, `GenomicRanges`) formats are still recommended for most users.
+
 # rgbio 0.3.0
 
 - Improved GenBank file read performance by ~25%:

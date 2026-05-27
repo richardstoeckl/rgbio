@@ -125,6 +125,9 @@
     list(
       metadata = rec$metadata,
       features = features_df,
+      start = feat$start,
+      end = feat$end,
+      strand = feat$strand,
       sequence = sequence
     )
   })
@@ -214,6 +217,91 @@
   out
 }
 
+.rgbio_build_base <- function(records_raw, include_sequences, include_features, include_metadata) {
+  record_ids <- .rgbio_record_ids(records_raw)
+  output <- list()
+
+  if (include_sequences) {
+    seq_vec <- vapply(records_raw, function(rec) rec$sequence, character(1))
+    output$sequences <- data.frame(
+      record_id = record_ids,
+      sequence = seq_vec,
+      length = nchar(seq_vec),
+      topology = vapply(
+        records_raw,
+        function(rec) {
+          top <- rec$metadata$topology
+          if (is.character(top) && length(top) == 1 && nzchar(top)) top else NA_character_
+        },
+        character(1)
+      ),
+      stringsAsFactors = FALSE
+    )
+    rownames(output$sequences) <- NULL
+  }
+
+  if (include_features) {
+    all_rows <- vector("list", length(records_raw))
+    for (i in seq_along(records_raw)) {
+      rec <- records_raw[[i]]
+      feat <- rec$features
+      if (nrow(feat) == 0) {
+        all_rows[[i]] <- NULL
+        next
+      }
+      all_rows[[i]] <- data.frame(
+        record_id = rep(record_ids[i], nrow(feat)),
+        type = feat$key,
+        start = rec$start,
+        end = rec$end,
+        strand = rec$strand,
+        qualifiers = I(feat$qualifiers),
+        stringsAsFactors = FALSE
+      )
+    }
+    output$features <- if (length(all_rows) == 0 || all(vapply(all_rows, is.null, logical(1)))) {
+      data.frame(
+        record_id = character(),
+        type = character(),
+        start = integer(),
+        end = integer(),
+        strand = character(),
+        qualifiers = I(list()),
+        stringsAsFactors = FALSE
+      )
+    } else {
+      do.call(rbind, all_rows[!vapply(all_rows, is.null, logical(1))])
+    }
+    rownames(output$features) <- NULL
+  }
+
+  if (include_metadata) {
+    output$metadata <- data.frame(
+      record_id = record_ids,
+      name = vapply(records_raw, function(rec) rec$metadata$name %||% "", character(1)),
+      definition = vapply(records_raw, function(rec) rec$metadata$definition %||% "", character(1)),
+      accession = vapply(records_raw, function(rec) rec$metadata$accession %||% "", character(1)),
+      version = vapply(records_raw, function(rec) rec$metadata$version %||% "", character(1)),
+      keywords = I(lapply(records_raw, function(rec) rec$metadata$keywords %||% character())),
+      source = vapply(records_raw, function(rec) rec$metadata$source %||% "", character(1)),
+      organism = vapply(records_raw, function(rec) rec$metadata$organism %||% "", character(1)),
+      molecule_type = vapply(records_raw, function(rec) rec$metadata$molecule_type %||% "", character(1)),
+      topology = vapply(records_raw, function(rec) rec$metadata$topology %||% "", character(1)),
+      division = vapply(records_raw, function(rec) rec$metadata$division %||% "", character(1)),
+      date = as.character(vapply(records_raw, function(rec) rec$metadata$date %||% NA_character_, character(1))),
+      references = I(lapply(records_raw, function(rec) rec$metadata$references %||% list())),
+      stringsAsFactors = FALSE
+    )
+    rownames(output$metadata) <- NULL
+  }
+
+  if (length(output) == 1) {
+    output[[1]]
+  } else {
+    output
+  }
+}
+
 .rgbio_build_tidy <- function(records_raw, include_sequences, include_features, include_metadata) {
   if (!requireNamespace("tibble", quietly = TRUE)) {
     stop("Package 'tibble' is required for tidy format.", call. = FALSE)
@@ -242,18 +330,18 @@
   if (include_features) {
     all_rows <- vector("list", length(records_raw))
     for (i in seq_along(records_raw)) {
-      feat <- records_raw[[i]]$features
+      rec <- records_raw[[i]]
+      feat <- rec$features
       if (nrow(feat) == 0) {
         all_rows[[i]] <- NULL
         next
       }
-      parsed <- .rgbio_parse_feature_location_vec(feat$location)
       all_rows[[i]] <- tibble::tibble(
         record_id = rep(record_ids[i], nrow(feat)),
         type = feat$key,
-        start = parsed$start,
-        end = parsed$end,
-        strand = parsed$strand,
+        start = rec$start,
+        end = rec$end,
+        strand = rec$strand,
         qualifiers = feat$qualifiers
       )
     }
@@ -330,15 +418,15 @@
     locations <- character(0)
 
     for (i in seq_along(records_raw)) {
-      feat <- records_raw[[i]]$features
+      rec <- records_raw[[i]]
+      feat <- rec$features
       if (nrow(feat) == 0) {
         next
       }
-      parsed <- .rgbio_parse_feature_location_vec(feat$location)
       seqnames <- c(seqnames, rep(record_ids[i], nrow(feat)))
-      starts <- c(starts, ifelse(is.na(parsed$start), 1L, parsed$start))
-      ends <- c(ends, ifelse(is.na(parsed$end), 1L, parsed$end))
-      strands <- c(strands, parsed$strand)
+      starts <- c(starts, ifelse(is.na(rec$start), 1L, rec$start))
+      ends <- c(ends, ifelse(is.na(rec$end), 1L, rec$end))
+      strands <- c(strands, rec$strand)
       types <- c(types, feat$key)
       qualifiers <- c(qualifiers, feat$qualifiers)
       locations <- c(locations, feat$location)
@@ -384,10 +472,10 @@
 #' Read a GenBank file
 #'
 #' Reads one or more GenBank records and returns selected components in either
-#' Bioconductor or tidy format.
+#' Bioconductor, tidy, or base format.
 #'
 #' @param file Character path to a GenBank file.
-#' @param format Output format. One of "bioconductor" or "tidy".
+#' @param format Output format. One of "bioconductor", "tidy", or "base".
 #' @param sequences Logical; include sequence data.
 #' @param features Logical; include feature annotations.
 #' @param metadata Logical; include record metadata.
@@ -411,8 +499,8 @@ read_gbk <- function(
   if (!file.exists(file)) {
     stop("File not found: ", file, call. = FALSE)
   }
-  if (!is.character(format) || length(format) != 1 || !format %in% c("bioconductor", "tidy")) {
-    stop("'format' must be one of: 'bioconductor', 'tidy'.", call. = FALSE)
+  if (!is.character(format) || length(format) != 1 || !format %in% c("bioconductor", "tidy", "base")) {
+    stop("'format' must be one of: 'bioconductor', 'tidy', 'base'.", call. = FALSE)
   }
   if (!is.logical(sequences) || length(sequences) != 1 || is.na(sequences)) {
     stop("'sequences' must be TRUE or FALSE.", call. = FALSE)
@@ -433,6 +521,31 @@ read_gbk <- function(
     stop("At least one of 'sequences', 'features', or 'metadata' must be TRUE.", call. = FALSE)
   }
 
+  if (format == "bioconductor") {
+    missing_pkgs <- c()
+    for (pkg in c("Biostrings", "GenomicRanges", "IRanges", "S4Vectors")) {
+      if (!requireNamespace(pkg, quietly = TRUE)) {
+        missing_pkgs <- c(missing_pkgs, pkg)
+      }
+    }
+    if (length(missing_pkgs) > 0) {
+      stop(
+        "The following required packages are missing for 'bioconductor' format: ",
+        paste(missing_pkgs, collapse = ", "), ".\n",
+        "Please install them or use format = 'base' for a dependency-free alternative.",
+        call. = FALSE
+      )
+    }
+  } else if (format == "tidy") {
+    if (!requireNamespace("tibble", quietly = TRUE)) {
+      stop(
+        "Package 'tibble' is required for 'tidy' format.\n",
+        "Please install it or use format = 'base' for a dependency-free alternative.",
+        call. = FALSE
+      )
+    }
+  }
+
   path <- normalizePath(file, mustWork = TRUE)
   records_raw <- .rgbio_rust_records(path)
   records_raw <- .rgbio_select_records(records_raw, records)
@@ -445,6 +558,8 @@ read_gbk <- function(
 
   if (format == "tidy") {
     return(.rgbio_build_tidy(records_raw, sequences, features, metadata))
+  } else if (format == "base") {
+    return(.rgbio_build_base(records_raw, sequences, features, metadata))
   }
 
   .rgbio_build_bioconductor(records_raw, sequences, features, metadata)

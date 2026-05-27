@@ -158,6 +158,46 @@ fn write_genbank_rs(path: &str, sequence: &str, features: Dataframe<Robj>, metad
     Robj::from(true)
 }
 
+fn is_complement(loc: &seq::Location) -> bool {
+    match loc {
+        seq::Location::Complement(_) => true,
+        seq::Location::Join(vec) | seq::Location::Order(vec) | seq::Location::Bond(vec) | seq::Location::OneOf(vec) => {
+            vec.iter().any(is_complement)
+        }
+        seq::Location::External(_, Some(inner)) => is_complement(inner),
+        _ => false,
+    }
+}
+
+fn get_bounds(loc: &seq::Location, min_val: &mut Option<i64>, max_val: &mut Option<i64>) {
+    match loc {
+        seq::Location::Range((a, _), (b, _)) => {
+            let start = a + 1;
+            let end = *b;
+            *min_val = Some(min_val.map_or(start, |m| std::cmp::min(m, start)));
+            *max_val = Some(max_val.map_or(end, |m| std::cmp::max(m, end)));
+        }
+        seq::Location::Between(a, b) => {
+            let start = a + 1;
+            let end = b + 1;
+            *min_val = Some(min_val.map_or(start, |m| std::cmp::min(m, start)));
+            *max_val = Some(max_val.map_or(end, |m| std::cmp::max(m, end)));
+        }
+        seq::Location::Complement(inner) => {
+            get_bounds(inner, min_val, max_val);
+        }
+        seq::Location::Join(vec) | seq::Location::Order(vec) | seq::Location::Bond(vec) | seq::Location::OneOf(vec) => {
+            for inner in vec {
+                get_bounds(inner, min_val, max_val);
+            }
+        }
+        seq::Location::External(_, Some(inner)) => {
+            get_bounds(inner, min_val, max_val);
+        }
+        _ => {}
+    }
+}
+
 fn parse_date(s: &str) -> Option<seq::Date> {
     let parts: Vec<&str> = s.split('-').collect();
     if parts.len() != 3 { return None; }
@@ -228,11 +268,30 @@ fn read_genbank_rs(path: &str) -> Robj {
                 // Features
                 let mut kinds = Vec::with_capacity(seq.features.len());
                 let mut locs = Vec::with_capacity(seq.features.len());
+                let mut starts = Vec::with_capacity(seq.features.len());
+                let mut ends = Vec::with_capacity(seq.features.len());
+                let mut strands = Vec::with_capacity(seq.features.len());
                 let mut quals_col = Vec::with_capacity(seq.features.len());
                 
                 for f in seq.features {
                     kinds.push(f.kind.to_string());
                     locs.push(f.location.to_string());
+                    
+                    let mut min_val = None;
+                    let mut max_val = None;
+                    get_bounds(&f.location, &mut min_val, &mut max_val);
+                    
+                    starts.push(min_val.map(|v| Rint::from(v as i32)).unwrap_or(Rint::na()));
+                    ends.push(max_val.map(|v| Rint::from(v as i32)).unwrap_or(Rint::na()));
+                    
+                    let strand_str = if is_complement(&f.location) {
+                        "-"
+                    } else if min_val.is_none() {
+                        "*"
+                    } else {
+                        "+"
+                    };
+                    strands.push(strand_str.to_string());
                     
                     let mut q_names = Vec::with_capacity(f.qualifiers.len());
                     let mut q_vals = Vec::with_capacity(f.qualifiers.len());
@@ -252,6 +311,9 @@ fn read_genbank_rs(path: &str) -> Robj {
                 let features_list = list!(
                     key = kinds,
                     location = locs,
+                    start = Integers::from_values(starts),
+                    end = Integers::from_values(ends),
+                    strand = strands,
                     qualifiers = List::from_values(quals_col)
                 );
                 
