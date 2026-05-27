@@ -37,6 +37,7 @@ provided you have the Rust toolchain installed. You can find information
 on how to install Rust at <https://github.com/r-rust/hellorust>.
 
 ``` r
+
 # install.packages("remotes")
 remotes::install_github("richardstoeckl/rgbio")
 ```
@@ -46,6 +47,7 @@ remotes::install_github("richardstoeckl/rgbio")
 ### Loading the Package
 
 ``` r
+
 library(rgbio)
 ```
 
@@ -60,6 +62,7 @@ To write a GenBank file in tidy mode, you typically provide: 1.
 Let’s create a minimal example sequence.
 
 ``` r
+
 # 1. The sequence
 seq_dna <- "ATGCGTACGTTAGC"
 
@@ -101,6 +104,7 @@ print(features_df)
 Now, write it to a temporary file:
 
 ``` r
+
 tmp_file <- tempfile(fileext = ".gb")
 write_gbk(
   file = tmp_file,
@@ -117,6 +121,7 @@ Reading is straightforward. `read_gbk` parses the file and can return
 tidy tables.
 
 ``` r
+
 records <- read_gbk(tmp_file, format = "tidy")
 names(records)
 #> [1] "sequences" "features"  "metadata"
@@ -129,6 +134,7 @@ The returned object has three components matching what we wrote.
 **Metadata:**
 
 ``` r
+
 str(records$metadata)
 #> tibble [1 × 13] (S3: tbl_df/tbl/data.frame)
 #>  $ record_id    : chr "EX0001"
@@ -151,6 +157,7 @@ str(records$metadata)
 **Sequence:**
 
 ``` r
+
 records$sequences$sequence[[1]]
 #> [1] "ATGCGTACGTTAGC"
 ```
@@ -160,6 +167,7 @@ records$sequences$sequence[[1]]
 The features are returned as a tidy `data.frame`.
 
 ``` r
+
 print(records$features)
 #> # A tibble: 3 × 6
 #>   record_id type   start   end strand qualifiers
@@ -174,6 +182,7 @@ print(records$features)
 You can also use Bioconductor-native classes for input and output.
 
 ``` r
+
 seqs_bioc <- Biostrings::DNAStringSet(c(EX0002 = "ATGCGGTTAA"))
 
 gr <- GenomicRanges::GRanges(

@@ -7,8 +7,8 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
 <title>rgbio • rgbio</title>
 <script src="deps/jquery-3.6.0/jquery-3.6.0.min.js"></script><meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
-<link href="deps/bootstrap-5.3.1/bootstrap.min.css" rel="stylesheet">
-<script src="deps/bootstrap-5.3.1/bootstrap.bundle.min.js"></script><link href="deps/font-awesome-6.5.2/css/all.min.css" rel="stylesheet">
+<link href="deps/bootstrap-5.3.8/bootstrap.min.css" rel="stylesheet">
+<script src="deps/bootstrap-5.3.8/bootstrap.bundle.min.js"></script><link href="deps/font-awesome-6.5.2/css/all.min.css" rel="stylesheet">
 <link href="deps/font-awesome-6.5.2/css/v4-shims.min.css" rel="stylesheet">
 <script src="deps/headroom-0.11.0/headroom.min.js"></script><script src="deps/headroom-0.11.0/jQuery.headroom.min.js"></script><script src="deps/bootstrap-toc-1.0.1/bootstrap-toc.min.js"></script><script src="deps/clipboard.js-2.0.11/clipboard.min.js"></script><script src="deps/search-1.0.0/autocomplete.jquery.min.js"></script><script src="deps/search-1.0.0/fuse.min.js"></script><script src="deps/search-1.0.0/mark.min.js"></script><!-- pkgdown --><script src="pkgdown.js"></script><meta property="og:title" content="rgbio">
 <meta name="description" content="High-performance GenBank I/O using the gb-io Rust crate.">
@@ -22,7 +22,7 @@
 
     <a class="navbar-brand me-2" href="index.html">rgbio</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Released version">0.3.0</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Released version">0.4.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -64,11 +64,11 @@
 <ul>
 <li>the only way to directly <strong>write</strong> GenBank files from R <em>(to my knowledge)</em>
 </li>
-<li>much faster <strong>reading</strong> of GenBank files <em>(~15x-25x faster than other packages in my benchmarks)</em>
+<li>much faster <strong>reading</strong> of GenBank files <em>(~25x-45x faster than other packages in my benchmarks)</em>
 </li>
 <li>reading into and writing from <strong>both</strong>: tidy objects (e.g. tibbles/data.frames) and “Bioconductor Sequence Infrastructure” objects (e.g. DNAStrings).</li>
 <li>robust parsing via the robust <a href="https://github.com/moshe/gb-io" class="external-link"><code>gb-io</code></a> Rust crate</li>
-<li>extensively tested on ~50 diverse GenBank files with many edge cases.</li>
+<li>extensively tested on ~50 diverse GenBank files with many edge cases (~700 tests).</li>
 </ul>
 </div>
 <div class="section level2">
@@ -92,6 +92,9 @@
 <p>Reading files is as simple as providing the path (and optionally chosing the output type):</p>
 <div class="sourceCode" id="cb3"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va">rgbio</span><span class="op">)</span></span>
+<span></span>
+<span><span class="co"># to get an object in base format</span></span>
+<span><span class="va">base</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/read_gbk.html">read_gbk</a></span><span class="op">(</span><span class="st">"path/to/some.gbk"</span>, format <span class="op">=</span> <span class="st">"base"</span><span class="op">)</span></span>
 <span></span>
 <span><span class="co"># to get an object with tidy dataframes</span></span>
 <span><span class="va">tidy</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/read_gbk.html">read_gbk</a></span><span class="op">(</span><span class="st">"path/to/some.gbk"</span>, format <span class="op">=</span> <span class="st">"tidy"</span><span class="op">)</span></span>
@@ -126,7 +129,7 @@
 </ul>
 <p><code>append = TRUE</code> requires that the target file already exists and is a valid GenBank file.</p>
 <div class="section level4">
-<h4 id="minimal-tidy-example">Minimal Tidy Example<a class="anchor" aria-label="anchor" href="#minimal-tidy-example"></a>
+<h4 id="minimal-basetidy-example">Minimal Base/Tidy Example<a class="anchor" aria-label="anchor" href="#minimal-basetidy-example"></a>
 </h4>
 <div class="sourceCode" id="cb4"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va">rgbio</span><span class="op">)</span></span>
@@ -164,38 +167,43 @@
 <div class="section level2">
 <h2 id="performance">Performance<a class="anchor" aria-label="anchor" href="#performance"></a>
 </h2>
-<p>Performance comparison reading 17 real-world GenBank files (rgbio v0.3.0):</p>
+<p>Performance comparison reading 17 real-world GenBank files (rgbio v0.4.0):</p>
 <table class="table">
 <colgroup>
 <col width="19%">
 <col width="42%">
 <col width="38%">
 </colgroup>
-<thead><tr class="header">
+<thead><tr>
 <th>Parser</th>
 <th>Relative Speed</th>
 <th>Median Time (ms)</th>
 </tr></thead>
 <tbody>
-<tr class="odd">
+<tr>
 <td>rgbio::read_gbk(format = ‘tidy’)</td>
-<td>24.6x</td>
-<td>64.5</td>
+<td>45.3x</td>
+<td>42.2</td>
 </tr>
-<tr class="even">
+<tr>
 <td>rgbio::read_gbk(format = ‘bioconductor’)</td>
-<td>22.4x</td>
-<td>70.8</td>
+<td>38.2x</td>
+<td>50.1</td>
 </tr>
-<tr class="odd">
+<tr>
+<td>rgbio::read_gbk(format = ‘base’)</td>
+<td>45.4x</td>
+<td>42.1</td>
+</tr>
+<tr>
 <td>geneviewer::read_gbk()</td>
-<td>1.3x</td>
-<td>1193.6</td>
+<td>1.5x</td>
+<td>1261.0</td>
 </tr>
-<tr class="even">
+<tr>
 <td>genbankr::readGenBank()</td>
 <td>baseline</td>
-<td>1583.6</td>
+<td>1912.1</td>
 </tr>
 </tbody>
 </table>

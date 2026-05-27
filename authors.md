@@ -8,11 +8,11 @@
 ## Citation
 
 Stöckl R (2026). *rgbio: High-Performance GenBank I/O using 'gb-io'*. R
-package version 0.3.0.
+package version 0.4.0.
 
     @Manual{,
       title = {rgbio: High-Performance GenBank I/O using 'gb-io'},
       author = {Richard Stöckl},
       year = {2026},
-      note = {R package version 0.3.0},
+      note = {R package version 0.4.0},
     }

@@ -9,7 +9,7 @@ strain assemblies from the order “Methanococcales” directly from NCBI
 using the `datasets` command-line tool. These represent real-world
 GenBank files with varying sizes and complexity.
 
-    #> The Benchmark was run on 2026-03-09 using rgbio version 0.3.0
+    #> The Benchmark was run on 2026-05-27 using rgbio version 0.4.0
 
 #### Data Download Command
 
@@ -31,6 +31,7 @@ We compared `rgbio` against three other popular GenBank reading
 packages:
 
 ``` r
+
 library(bench)
 library(dplyr)
 library(ggplot2)
@@ -53,6 +54,7 @@ library(genbankr)   # Traditional Bioconductor GenBank reader. Only available up
 ### Running the Benchmarks
 
 ``` r
+
 # Set up test data paths
 gbk_dir <- "./ncbi_dataset/data"
 gbk_files <- list.files(gbk_dir, pattern = "\\.gbff$", recursive = TRUE, full.names = TRUE)
@@ -72,6 +74,38 @@ readers <- list(
             rgbio::read_gbk(file, format = "bioconductor")
         }, error = function(e) {
             message("rgbio (bioconductor) failed on ", file, ": ", e$message)
+            return(NULL)
+        })
+    },
+    "rgbio::read_gbk(format = 'base')" = function(file) {
+        tryCatch({
+            rgbio::read_gbk(file, format = "base")
+        }, error = function(e) {
+            message("rgbio (base) failed on ", file, ": ", e$message)
+            return(NULL)
+        })
+    },
+    "rgbio::read_gbk(format = 'tidy', validate = FALSE)" = function(file) {
+        tryCatch({
+            rgbio::read_gbk(file, format = "tidy", validate = FALSE)
+        }, error = function(e) {
+            message("rgbio (tidy) failed on ", file, ": ", e$message)
+            return(NULL)
+        })
+    },
+    "rgbio::read_gbk(format = 'bioconductor', validate = FALSE)" = function(file) {
+        tryCatch({
+            rgbio::read_gbk(file, format = "bioconductor", validate = FALSE)
+        }, error = function(e) {
+            message("rgbio (bioconductor) failed on ", file, ": ", e$message)
+            return(NULL)
+        })
+    },
+    "rgbio::read_gbk(format = 'base', validate = FALSE)" = function(file) {
+        tryCatch({
+            rgbio::read_gbk(file, format = "base", validate = FALSE)
+        }, error = function(e) {
+            message("rgbio (base) failed on ", file, ": ", e$message)
             return(NULL)
         })
     },
@@ -99,6 +133,7 @@ each parser on every file exactly once to simulate real-world usage
 patterns.
 
 ``` r
+
 # Run comprehensive benchmarks across all file × reader combinations
 benchmark_results <- press(
     file = gbk_files,
@@ -118,6 +153,7 @@ To benchmark the writing, we pre-read each file once per `rgbio` format
 only the write step.
 
 ``` r
+
 # Pre-read objects once (no benchmarking) for each file × rgbio format
 write_cache_grid <- expand.grid(
     file = gbk_files,
@@ -197,6 +233,7 @@ write_results <- write_benchmark_results
 ### Processing Results
 
 ``` r
+
 # Clean up results and add useful metadata
 benchmark_df <- benchmark_results %>%
     mutate(
@@ -227,6 +264,7 @@ write_benchmark_df <- write_results %>%
 #### Performance Visualization
 
 ``` r
+
 p1 <- ggplot(benchmark_df, aes(x = factor(reader, levels = names(readers)), y = time_ms, fill = reader)) +
     geom_violin(alpha = 0.7) + 
     geom_boxplot(width = 0.2, alpha = 0.8) +
@@ -262,6 +300,7 @@ indicate better performance.
 #### Summary Statistics
 
 ``` r
+
 # Calculate performance summary with speedup factors
 summary_stats <- benchmark_df %>%
     group_by(reader) %>%
@@ -288,14 +327,18 @@ knitr::kable(summary_stats,
              caption = "Performance comparison summary")
 ```
 
-| Parser                                   | Speed vs Slowest | Median Time (ms) | Mean Time (ms) | Median Memory (MB) | Files Tested |
-|:-----------------------------------------|:-----------------|-----------------:|---------------:|-------------------:|-------------:|
-| rgbio::read_gbk(format = ‘tidy’)         | 24.6x            |             64.5 |           64.0 |               31.6 |           17 |
-| rgbio::read_gbk(format = ‘bioconductor’) | 22.4x            |             70.8 |           70.5 |               33.5 |           17 |
-| geneviewer::read_gbk()                   | 1.3x             |           1193.6 |         1224.7 |                1.5 |           17 |
-| genbankr::readGenBank()                  | baseline         |           1583.6 |         1741.7 |               34.8 |           17 |
+| Parser | Speed vs Slowest | Median Time (ms) | Mean Time (ms) | Median Memory (MB) | Files Tested |
+|:---|:---|---:|---:|---:|---:|
+| rgbio::read_gbk(format = ‘tidy’) | 45.3x | 42.2 | 42.5 | 4.4 | 17 |
+| rgbio::read_gbk(format = ‘bioconductor’) | 38.2x | 50.1 | 48.8 | 6.2 | 17 |
+| rgbio::read_gbk(format = ‘base’) | 45.4x | 42.1 | 41.6 | 4.3 | 17 |
+| rgbio::read_gbk(format = ‘tidy’, validate = FALSE) | 44.8x | 42.7 | 44.2 | 5.0 | 17 |
+| rgbio::read_gbk(format = ‘bioconductor’, validate = FALSE) | 37.2x | 51.4 | 68.3 | 5.0 | 17 |
+| rgbio::read_gbk(format = ‘base’, validate = FALSE) | 45.6x | 41.9 | 42.5 | 4.1 | 17 |
+| geneviewer::read_gbk() | 1.5x | 1261.0 | 1387.9 | 1.5 | 17 |
+| genbankr::readGenBank() | baseline | 1912.1 | 1688.6 | 38.7 | 17 |
 
-Performance comparison summary
+Performance comparison summary {.table style="width:100%;"}
 
 ### Key Findings
 
@@ -314,57 +357,74 @@ The benchmarks reveal several important insights:
 ### Technical Details
 
 ``` r
+
 sessionInfo()
 #> R version 4.2.3 (2023-03-15)
 #> Platform: aarch64-apple-darwin20 (64-bit)
-#> Running under: macOS 15.7.4
+#> Running under: macOS 15.7.7
 #> 
 #> Matrix products: default
+#> BLAS:   /Library/Frameworks/R.framework/Versions/4.2-arm64/Resources/lib/libRblas.0.dylib
 #> LAPACK: /Library/Frameworks/R.framework/Versions/4.2-arm64/Resources/lib/libRlapack.dylib
 #> 
 #> locale:
-#> [1] en_US.UTF-8/en_US.UTF-8/en_US.UTF-8/C/en_US.UTF-8/en_US.UTF-8
+#> [1] C/UTF-8/C/C/C/C
 #> 
 #> attached base packages:
 #> [1] stats     graphics  grDevices utils     datasets  methods   base     
 #> 
 #> other attached packages:
-#> [1] genbankr_1.26.0   geneviewer_0.1.11 read.gb_2.2       rgbio_0.3.0       ggplot2_4.0.2    
-#> [6] dplyr_1.2.0       bench_1.1.4      
+#> [1] genbankr_1.26.0   geneviewer_0.1.11 read.gb_2.2       rgbio_0.4.0      
+#> [5] ggplot2_4.0.3     dplyr_1.2.1       bench_1.1.4      
 #> 
 #> loaded via a namespace (and not attached):
-#>  [1] bitops_1.0-9                matrixStats_1.5.0           fontawesome_0.5.3          
-#>  [4] bit64_4.6.0-1               filelock_1.0.3              RColorBrewer_1.1-3         
-#>  [7] progress_1.2.3              httr_1.4.8                  GenomeInfoDb_1.34.9        
-#> [10] tools_4.2.3                 utf8_1.2.6                  R6_2.6.1                   
-#> [13] otel_0.2.0                  DBI_1.3.0                   BiocGenerics_0.44.0        
-#> [16] withr_3.0.2                 tidyselect_1.2.1            prettyunits_1.2.0          
-#> [19] bit_4.6.0                   curl_7.0.0                  compiler_4.2.3             
-#> [22] cli_3.6.5                   Biobase_2.58.0              xml2_1.5.2                 
-#> [25] DelayedArray_0.24.0         rtracklayer_1.58.0          scales_1.4.0               
-#> [28] S7_0.2.1                    rappdirs_0.3.4              stringr_1.6.0              
-#> [31] digest_0.6.39               Rsamtools_2.14.0            rentrez_1.2.4              
-#> [34] XVector_0.38.0              pkgconfig_2.0.3             htmltools_0.5.9            
-#> [37] MatrixGenerics_1.10.0       BSgenome_1.66.3             dbplyr_2.5.2               
-#> [40] fastmap_1.2.0               htmlwidgets_1.6.4           rlang_1.1.7                
-#> [43] rstudioapi_0.18.0           RSQLite_2.4.6               BiocIO_1.8.0               
-#> [46] farver_2.1.2                generics_0.1.4              jsonlite_2.0.0             
-#> [49] BiocParallel_1.32.6         VariantAnnotation_1.44.1    RCurl_1.98-1.17            
-#> [52] magrittr_2.0.4              GenomeInfoDbData_1.2.9      Matrix_1.5-3               
-#> [55] Rcpp_1.1.1                  S4Vectors_0.36.2            lifecycle_1.0.5            
-#> [58] stringi_1.8.7               yaml_2.3.12                 SummarizedExperiment_1.28.0
-#> [61] zlibbioc_1.44.0             BiocFileCache_2.6.1         grid_4.2.3                 
-#> [64] blob_1.3.0                  parallel_4.2.3              crayon_1.5.3               
-#> [67] profmem_0.7.0               lattice_0.22-9              Biostrings_2.66.0          
-#> [70] GenomicFeatures_1.50.4      hms_1.1.4                   KEGGREST_1.38.0            
-#> [73] knitr_1.51                  pillar_1.11.1               GenomicRanges_1.50.2       
-#> [76] rjson_0.2.23                codetools_0.2-20            biomaRt_2.54.1             
-#> [79] stats4_4.2.3                XML_3.99-0.22               glue_1.8.0                 
-#> [82] evaluate_1.0.5              png_0.1-8                   vctrs_0.7.1                
-#> [85] gtable_0.3.6                purrr_1.2.1                 tidyr_1.3.2                
-#> [88] cachem_1.1.0                xfun_0.56                   restfulr_0.0.16            
-#> [91] tibble_3.3.1                GenomicAlignments_1.34.1    AnnotationDbi_1.60.2       
-#> [94] memoise_2.0.1               IRanges_2.32.0
+#>  [1] bitops_1.0-9                matrixStats_1.5.0          
+#>  [3] fontawesome_0.5.3           bit64_4.8.2                
+#>  [5] filelock_1.0.3              RColorBrewer_1.1-3         
+#>  [7] progress_1.2.3              httr_1.4.8                 
+#>  [9] GenomeInfoDb_1.34.9         tools_4.2.3                
+#> [11] utf8_1.2.6                  R6_2.6.1                   
+#> [13] otel_0.2.0                  DBI_1.3.0                  
+#> [15] BiocGenerics_0.44.0         withr_3.0.2                
+#> [17] tidyselect_1.2.1            prettyunits_1.2.0          
+#> [19] bit_4.6.0                   curl_7.1.0                 
+#> [21] compiler_4.2.3              cli_3.6.6                  
+#> [23] Biobase_2.58.0              xml2_1.5.2                 
+#> [25] DelayedArray_0.24.0         rtracklayer_1.58.0         
+#> [27] scales_1.4.0                S7_0.2.2                   
+#> [29] rappdirs_0.3.4              stringr_1.6.0              
+#> [31] digest_0.6.39               Rsamtools_2.14.0           
+#> [33] rentrez_1.2.4               XVector_0.38.0             
+#> [35] pkgconfig_2.0.3             htmltools_0.5.9            
+#> [37] MatrixGenerics_1.10.0       dbplyr_2.5.2               
+#> [39] fastmap_1.2.0               BSgenome_1.66.3            
+#> [41] htmlwidgets_1.6.4           rlang_1.2.0                
+#> [43] RSQLite_3.52.0              BiocIO_1.8.0               
+#> [45] farver_2.1.2                generics_0.1.4             
+#> [47] jsonlite_2.0.0              BiocParallel_1.32.6        
+#> [49] VariantAnnotation_1.44.1    RCurl_1.98-1.18            
+#> [51] magrittr_2.0.5              GenomeInfoDbData_1.2.9     
+#> [53] Matrix_1.5-3                Rcpp_1.1.1-1.1             
+#> [55] S4Vectors_0.36.2            lifecycle_1.0.5            
+#> [57] stringi_1.8.7               yaml_2.3.12                
+#> [59] SummarizedExperiment_1.28.0 zlibbioc_1.44.0            
+#> [61] BiocFileCache_2.6.1         grid_4.2.3                 
+#> [63] blob_1.3.0                  parallel_4.2.3             
+#> [65] crayon_1.5.3                profmem_0.7.0              
+#> [67] lattice_0.22-9              Biostrings_2.66.0          
+#> [69] GenomicFeatures_1.50.4      hms_1.1.4                  
+#> [71] KEGGREST_1.38.0             knitr_1.51                 
+#> [73] pillar_1.11.1               GenomicRanges_1.50.2       
+#> [75] rjson_0.2.23                codetools_0.2-20           
+#> [77] biomaRt_2.54.1              stats4_4.2.3               
+#> [79] XML_3.99-0.23               glue_1.8.1                 
+#> [81] evaluate_1.0.5              png_0.1-9                  
+#> [83] vctrs_0.7.3                 gtable_0.3.6               
+#> [85] purrr_1.2.2                 tidyr_1.3.2                
+#> [87] cachem_1.1.0                xfun_0.57                  
+#> [89] restfulr_0.0.16             tibble_3.3.1               
+#> [91] GenomicAlignments_1.34.1    AnnotationDbi_1.60.2       
+#> [93] memoise_2.0.1               IRanges_2.32.0
 ```
 
 ### Conclusion

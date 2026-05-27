@@ -1,7 +1,7 @@
 # Read a GenBank file
 
 Reads one or more GenBank records and returns selected components in
-either Bioconductor or tidy format.
+either Bioconductor, tidy, or base format.
 
 ## Usage
 
@@ -25,7 +25,7 @@ read_gbk(
 
 - format:
 
-  Output format. One of "bioconductor" or "tidy".
+  Output format. One of "bioconductor", "tidy", or "base".
 
 - sequences:
 
